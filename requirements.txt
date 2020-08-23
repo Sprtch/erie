@@ -1,0 +1,5 @@
+asyncio
+aioconsole
+daemonize
+evdev==1.3.0
+redis
