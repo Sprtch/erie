@@ -16,17 +16,17 @@ SERIAL_SCANNER_PATH = "/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A9UXOL6H-if00-
 r = redis.Redis(host='localhost', port=6379, db=0)
 p = r.pubsub()
 
-# Make the keyboard mapping between the scandata received from evdev and the
-# actual value on the keyboard (should be qwerty).
-KEYBOARD_TRANSLATE = {
-    # Keyboard code: actual number
-    'LEFTSHIFT': '',
-    'SLASH': '/',
-}
-
 logger = logging
 
 class InputDeviceWrapper:
+    # Make the keyboard mapping between the scandata received from evdev and the
+    # actual value on the keyboard (should be qwerty).
+    KEYBOARD_TRANSLATE = {
+        # Keyboard code: actual number
+        'LEFTSHIFT': '',
+        'SLASH': '/',
+    }
+
     def __init__(self, path):
         self.path = path
         self.dev = None
@@ -53,7 +53,7 @@ class InputDeviceWrapper:
                     data = categorize(ev)
                     if (data.keystate == 0):
                         key = ecodes.KEY[data.scancode][4:] # Remove the "KEY_" default character of ecode to only get the key
-                        key = KEYBOARD_TRANSLATE.get(key, key)
+                        key = InputDeviceWrapper.KEYBOARD_TRANSLATE.get(key, key)
                         if (key == None and barcode) or key == 'ENTER':
                             yield barcode
                             barcode = ''
