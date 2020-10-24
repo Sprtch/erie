@@ -6,6 +6,7 @@ import logging
 import argparse
 import redis
 import serial
+import queue, threading
 
 APPNAME = "erie"
 REDIS_PUB_CHAN = "victoria"
@@ -44,7 +45,7 @@ class InputDeviceWrapper:
 
         return self.dev is not None
 
-    def read_loop(self):
+    def _read_loop(self):
         barcode = ''
         try:
             for ev in self.dev.read_loop():
@@ -61,7 +62,14 @@ class InputDeviceWrapper:
         except OSError:
             logger.warning("Barcode scanner just disconnected")
 
-
+    def read_loop(self):
+        barcode = ''
+        while True:
+            if not self.present():
+                time.sleep(5)
+                continue
+            for x in self._read_loop():
+                yield x
 
 class SerialWrapper:
     def __init__(self, path):
@@ -78,7 +86,7 @@ class SerialWrapper:
 
         return self.dev is not None
 
-    def read_loop(self):
+    def _read_loop(self):
         try:
             while 1:
                 line = self.dev.readline().decode('utf-8').strip()
@@ -87,6 +95,15 @@ class SerialWrapper:
         except serial.serialutil.SerialException as e:
             logger.warning(e)
 
+    def read_loop(self):
+        barcode = ''
+        while True:
+            if not self.present():
+                time.sleep(5)
+                continue
+            for x in self._read_loop():
+                yield x
+
 def send_to_print(barcode):
     logger.info("Scanned '%s'" % (barcode))
     try: 
@@ -94,18 +111,32 @@ def send_to_print(barcode):
     except redis.ConnectionError as e:
         logger.error(e)
 
-def barcode_scanner_listener(dev):
-    barcode = ''
+def gen_multiplex(genlist):
+    item_q = queue.Queue()
+    def run_one(source):
+        for item in source: item_q.put(item)
+
+    def run_all():
+        thrlist = []
+        for source in genlist:
+            t = threading.Thread(target=run_one,args=(source,))
+            t.start()
+            thrlist.append(t)
+        for t in thrlist: t.join()
+        item_q.put(StopIteration)
+
+    threading.Thread(target=run_all).start()
     while True:
-        if not dev.present():
-            time.sleep(5)
-            continue
-        for barcode in dev.read_loop():
-            send_to_print(barcode)
+        item = item_q.get()
+        if item is StopIteration: return
+        yield item
+
+def barcode_scanner_listener(devlist):
+    for barcode in gen_multiplex(map(lambda x: x.read_loop(), devlist)):
+        send_to_print(barcode)
 
 def main():
-    # barcode_scanner_listener(InputDeviceWrapper(USB_SCANNER_PATH))
-    barcode_scanner_listener(SerialWrapper(SERIAL_SCANNER_PATH))
+    barcode_scanner_listener((InputDeviceWrapper(USB_SCANNER_PATH), SerialWrapper(SERIAL_SCANNER_PATH)))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='')
