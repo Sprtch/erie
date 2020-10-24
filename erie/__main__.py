@@ -5,10 +5,12 @@ import time
 import logging
 import argparse
 import redis
+import serial
 
 APPNAME = "erie"
 REDIS_PUB_CHAN = "victoria"
 USB_SCANNER_PATH = "/dev/input/by-id/usb-Belon.cn_2.4G_Wireless_Device_Belon_Smart-event-kbd"
+SERIAL_SCANNER_PATH = "/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A9UXOL6H-if00-port0"
 
 r = redis.Redis(host='localhost', port=6379, db=0)
 p = r.pubsub()
@@ -23,29 +25,67 @@ KEYBOARD_TRANSLATE = {
 
 logger = logging
 
-class Scanner:
+class InputDeviceWrapper:
     def __init__(self, path):
         self.path = path
         self.dev = None
 
     def present(self):
-        if os.path.exists(USB_SCANNER_PATH):
-            logger.info("Plugged barcode scanner")
-            self.dev = InputDevice(USB_SCANNER_PATH)
+        if os.path.exists(self.path):
+            logger.info("[EVDEV] Barcode scanner found")
+            self.dev = InputDevice(self.path)
+            self.dev.grab()
+        elif self.dev:
+            self.dev.ungrab() # Test this case
+            self.dev = None
+            logger.warning("[EVDEV] Barcode disconnected")
         else:
             logger.warning("Still no barcode scanner plugged")
+
+        return self.dev is not None
+
+    def read_loop(self):
+        barcode = ''
+        try:
+            for ev in self.dev.read_loop():
+                if ev.type == ecodes.EV_KEY:
+                    data = categorize(ev)
+                    if (data.keystate == 0):
+                        key = ecodes.KEY[data.scancode][4:] # Remove the "KEY_" default character of ecode to only get the key
+                        key = KEYBOARD_TRANSLATE.get(key, key)
+                        if (key == None and barcode) or key == 'ENTER':
+                            yield barcode
+                            barcode = ''
+                        elif len(key):
+                            barcode += str(key)
+        except OSError:
+            logger.warning("Barcode scanner just disconnected")
+
+
+
+class SerialWrapper:
+    def __init__(self, path):
+        self.path = path 
+        self.dev = path 
+
+    def present(self):
+        if os.path.exists(self.path):
+            logger.info("[SERIAL] Barcode scanner found")
+            self.dev = serial.Serial(self.path, 9600, timeout=1)
+        else:
+            logger.warning("[SERIAL] Still no barcode scanner found")
             self.dev = None
 
         return self.dev is not None
 
-    def grab(self):
-        self.dev.grab()
-
-    def ungrab(self):
-        self.dev.ungrab()
-
     def read_loop(self):
-        return self.dev.read_loop()
+        try:
+            while 1:
+                line = self.dev.readline().decode('utf-8').strip()
+                if line:
+                    yield line
+        except serial.serialutil.SerialException as e:
+            logger.warning(e)
 
 def send_to_print(barcode):
     logger.info("Scanned '%s'" % (barcode))
@@ -56,30 +96,16 @@ def send_to_print(barcode):
 
 def barcode_scanner_listener(dev):
     barcode = ''
-    # g = usb_scanner_checker()
     while True:
         if not dev.present():
             time.sleep(5)
             continue
-        try:
-            dev.grab()
-            for ev in dev.read_loop():
-                if ev.type == ecodes.EV_KEY:
-                    data = categorize(ev)
-                    if (data.keystate == 0):
-                        key = ecodes.KEY[data.scancode][4:] # Remove the "KEY_" default character of ecode to only get the key
-                        key = KEYBOARD_TRANSLATE.get(key, key)
-                        if (key == None and barcode) or key == 'ENTER':
-                            send_to_print(barcode)
-                            barcode = ''
-                        elif len(key):
-                            barcode += str(key)
-            dev.ungrab()
-        except OSError:
-            logger.warning("Barcode scanner just disconnected")
+        for barcode in dev.read_loop():
+            send_to_print(barcode)
 
 def main():
-    barcode_scanner_listener(Scanner(USB_SCANNER_PATH))
+    # barcode_scanner_listener(InputDeviceWrapper(USB_SCANNER_PATH))
+    barcode_scanner_listener(SerialWrapper(SERIAL_SCANNER_PATH))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='')
