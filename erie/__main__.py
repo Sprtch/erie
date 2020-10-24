@@ -1,8 +1,6 @@
 from time import sleep
 from daemonize import Daemonize
-from aioconsole import ainput
 from evdev import InputDevice, categorize, ecodes
-import asyncio
 import logging
 import argparse
 import redis
