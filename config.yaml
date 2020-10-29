@@ -1,0 +1,11 @@
+erie:
+    redis: "victoria"
+    devices:
+        - symbolfz:
+            type: "serial"
+            id: "usb-FTDI_FT232R_USB_UART_A9UXOL6H-if00-port0"
+            baudrate: 9600
+        - inatek:
+            type: "evdev"
+            id: "usb-Belon.cn_2.4G_Wireless_Device_Belon_Smart-event-kbd"
+

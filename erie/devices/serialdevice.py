@@ -4,24 +4,32 @@ import os
 import time
 
 class SerialWrapper:
-    def __init__(self, path):
-        self.path = path 
-        self.dev = path 
+    def __init__(self, name, path=None, deviceid=None, redis=None):
+        if not (path or deviceid):
+            logger.error("[SER:%s] Must specify a path or device id" % (name))
+
+        if deviceid:
+            self.path = "/dev/serial/by-id/%s" % (deviceid)
+        else:
+            self.path = path
+            
+        self.redis = redis
+        self._dev = None
 
     def present(self):
         if os.path.exists(self.path):
             logger.info("[SERIAL] Barcode scanner found")
-            self.dev = serial.Serial(self.path, 9600, timeout=1)
+            self._dev = serial.Serial(self.path, 9600, timeout=1)
         else:
             logger.warning("[SERIAL] Still no barcode scanner found")
-            self.dev = None
+            self._dev = None
 
-        return self.dev is not None
+        return self._dev is not None
 
     def _read_loop(self):
         try:
             while 1:
-                line = self.dev.readline().decode('utf-8').strip()
+                line = self._dev.readline().decode('utf-8').strip()
                 if line:
                     yield line
         except serial.serialutil.SerialException as e:
