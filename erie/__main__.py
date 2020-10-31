@@ -43,12 +43,9 @@ def gen_multiplex(genlist):
         if item is StopIteration: return
         yield item
 
-def barcode_scanner_listener(devlist):
-    for barcode in gen_multiplex(map(lambda x: x.read_loop(), devlist)):
-        send_to_print(barcode)
-
 def main(conf):
-    barcode_scanner_listener(conf.devices)
+    for barcode in gen_multiplex(map(lambda x: x.read_loop(), conf.devices)):
+        send_to_print(barcode)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='')
