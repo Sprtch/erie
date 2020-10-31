@@ -19,7 +19,7 @@ class DeviceWrapper:
     def present(self):
         raise NotImplementedError
 
-    def _read_loop(self):
+    def retrieve(self):
         raise NotImplementedError
 
     def read_loop(self):
@@ -27,5 +27,5 @@ class DeviceWrapper:
             if not self.present():
                 time.sleep(5)
                 continue
-            for x in self._read_loop():
+            for x in self.retrieve():
                 yield x

@@ -28,7 +28,7 @@ class SerialWrapper(DeviceWrapper):
 
         return self._dev is not None
 
-    def _read_loop(self):
+    def retrieve(self):
         try:
             while 1:
                 line = self._dev.readline().decode('utf-8').strip()

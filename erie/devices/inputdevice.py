@@ -40,7 +40,7 @@ class InputDeviceWrapper(DeviceWrapper):
 
         return self._dev is not None
 
-    def _read_loop(self):
+    def retrieve(self):
         barcode = ''
         try:
             for ev in self._dev.read_loop():
