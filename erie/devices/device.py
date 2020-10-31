@@ -1,8 +1,6 @@
 from erie.logger import logger
+from erie.message import BarcodeMessage 
 import time
-from collections import namedtuple
-
-BarcodeMessage = namedtuple('BarcodeMessage', 'barcode, origin, redis')
 
 class DeviceWrapper:
     def __init__(self, devicetype, name, redis):

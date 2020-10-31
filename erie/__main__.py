@@ -1,5 +1,6 @@
 from erie.config import Config
 from erie.logger import logger
+from erie.processor import Processor
 from erie.devices.inputdevice import InputDeviceWrapper
 from erie.devices.serialdevice import SerialWrapper
 from daemonize import Daemonize
@@ -47,7 +48,7 @@ def gen_multiplex(genlist):
         yield item
 
 def main(conf):
-    for msg in gen_multiplex(map(lambda x: x.read_loop(), conf.devices)):
+    for msg in gen_multiplex(map(lambda x: x.read(), map(lambda x: Processor(x), conf.devices))):
         send_to_print(msg)
 
 if __name__ == "__main__":
