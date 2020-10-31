@@ -44,8 +44,8 @@ def gen_multiplex(genlist):
         yield item
 
 def main(conf):
-    for barcode in gen_multiplex(map(lambda x: x.read_loop(), conf.devices)):
-        send_to_print(barcode)
+    for msg in gen_multiplex(map(lambda x: x.read_loop(), conf.devices)):
+        send_to_print(msg.barcode)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='')

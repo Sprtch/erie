@@ -1,4 +1,3 @@
-from erie.devices.message import BarcodeMessage
 from erie.devices.device import DeviceWrapper
 from evdev import InputDevice, categorize, ecodes
 import os
@@ -12,8 +11,8 @@ class InputDeviceWrapper(DeviceWrapper):
         'SLASH': '/',
     }
 
-    def __init__(self, name, path=None, deviceid=None, redis=None):
-        super().__init__("EVDEV", name)
+    def __init__(self, name, redis, path=None, deviceid=None):
+        super().__init__("EVDEV", name, redis)
 
         if not (path or deviceid):
             self.error("Must specify a path or device id")
@@ -23,7 +22,6 @@ class InputDeviceWrapper(DeviceWrapper):
         else:
             self.path = path
 
-        self.redis = redis
         self._dev = None
 
     def present(self):
