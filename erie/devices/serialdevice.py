@@ -2,7 +2,6 @@ from erie.devices.message import BarcodeMessage
 from erie.devices.device import DeviceWrapper
 import serial
 import os
-import time
 
 class SerialWrapper(DeviceWrapper):
     def __init__(self, name, path=None, deviceid=None, redis=None):

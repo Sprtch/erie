@@ -2,7 +2,6 @@ from erie.devices.message import BarcodeMessage
 from erie.devices.device import DeviceWrapper
 from evdev import InputDevice, categorize, ecodes
 import os
-import time
 
 class InputDeviceWrapper(DeviceWrapper):
     # Make the keyboard mapping between the scandata received from evdev and the

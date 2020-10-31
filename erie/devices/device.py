@@ -1,7 +1,5 @@
 from erie.logger import logger
 from erie.devices.message import BarcodeMessage
-import serial
-import os
 import time
 
 class DeviceWrapper:
@@ -19,10 +17,10 @@ class DeviceWrapper:
         logger.error("[%s:%s] %s" % (self._device_type, self.name, msg))
 
     def present(self):
-        pass
+        raise NotImplementedError
 
     def _read_loop(self):
-        pass
+        raise NotImplementedError
 
     def read_loop(self):
         while True:
