@@ -4,13 +4,6 @@ from erie.logger import logger
 import os
 import yaml
 
-MINIMAL_DEFAULT = """
-erie:
-    redis: "void"
-    devices:
-        - stdin
-"""
-
 class InvalidConfigFile(Exception):
     pass
 
