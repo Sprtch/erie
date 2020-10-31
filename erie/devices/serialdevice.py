@@ -1,12 +1,15 @@
-from erie.logger import logger
+from erie.devices.message import BarcodeMessage
+from erie.devices.device import DeviceWrapper
 import serial
 import os
 import time
 
-class SerialWrapper:
+class SerialWrapper(DeviceWrapper):
     def __init__(self, name, path=None, deviceid=None, redis=None):
+        super().__init__("SERIAL", name)
+
         if not (path or deviceid):
-            logger.error("[SER:%s] Must specify a path or device id" % (name))
+            self.error("Must specify a path or device id")
 
         if deviceid:
             self.path = "/dev/serial/by-id/%s" % (deviceid)
@@ -18,10 +21,10 @@ class SerialWrapper:
 
     def present(self):
         if os.path.exists(self.path):
-            logger.info("[SERIAL] Barcode scanner found")
+            self.info("Barcode scanner found")
             self._dev = serial.Serial(self.path, 9600, timeout=1)
         else:
-            logger.warning("[SERIAL] Still no barcode scanner found")
+            self.warning("Still no barcode scanner found")
             self._dev = None
 
         return self._dev is not None
@@ -33,13 +36,4 @@ class SerialWrapper:
                 if line:
                     yield line
         except serial.serialutil.SerialException as e:
-            logger.warning(e)
-
-    def read_loop(self):
-        barcode = ''
-        while True:
-            if not self.present():
-                time.sleep(5)
-                continue
-            for x in self._read_loop():
-                yield x
+            self.error(e)
