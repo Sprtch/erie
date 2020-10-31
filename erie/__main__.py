@@ -9,17 +9,20 @@ import redis
 import queue, threading
 
 APPNAME = "erie"
-REDIS_PUB_CHAN = "victoria"
+REDIS_PUB_CHAN_DEFAULT = "victoria"
 USB_SCANNER_PATH = "/dev/input/by-id/usb-Belon.cn_2.4G_Wireless_Device_Belon_Smart-event-kbd"
 SERIAL_SCANNER_PATH = "/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A9UXOL6H-if00-port0"
 
 r = redis.Redis(host='localhost', port=6379, db=0)
 p = r.pubsub()
 
-def send_to_print(barcode):
-    logger.info("Scanned '%s'" % (barcode))
+def send_to_print(msg):
+    logger.info("Scanned '%s'" % (msg.barcode))
     try: 
-        r.publish(REDIS_PUB_CHAN, '{"name": "%s", "barcode": "%s"}' % (barcode, barcode))
+        r.publish(
+            msg.redis or REDIS_PUB_CHAN_DEFAULT, 
+            '{"name": "%s", "barcode": "%s", "origin": "%s"}' % (msg.barcode, msg.barcode, msg.origin)
+        )
     except redis.ConnectionError as e:
         logger.error(e)
 
@@ -45,7 +48,7 @@ def gen_multiplex(genlist):
 
 def main(conf):
     for msg in gen_multiplex(map(lambda x: x.read_loop(), conf.devices)):
-        send_to_print(msg.barcode)
+        send_to_print(msg)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='')
