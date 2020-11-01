@@ -11,8 +11,6 @@ import queue, threading
 
 APPNAME = "erie"
 REDIS_PUB_CHAN_DEFAULT = "victoria"
-USB_SCANNER_PATH = "/dev/input/by-id/usb-Belon.cn_2.4G_Wireless_Device_Belon_Smart-event-kbd"
-SERIAL_SCANNER_PATH = "/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A9UXOL6H-if00-port0"
 
 r = redis.Redis(host='localhost', port=6379, db=0)
 p = r.pubsub()
