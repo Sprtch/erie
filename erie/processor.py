@@ -1,7 +1,14 @@
+from despinassy import Part
+from erie.message import BarcodeMessage, Message
+
 class Scanner:
     @staticmethod
     def retrieve_from_db(msg):
-        return msg
+        in_db = Part.query.get(msg.barcode)
+        if in_db:
+            return Message(name=in_db.name, **msg)
+        else:
+            return Message(message='', **msg)
 
     @staticmethod
     def process(msg):

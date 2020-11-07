@@ -3,6 +3,7 @@ from erie.logger import logger
 from erie.processor import Processor
 from erie.devices.inputdevice import InputDeviceWrapper
 from erie.devices.serialdevice import SerialWrapper
+from erie.db import db, init_db
 from daemonize import Daemonize
 import os
 import argparse
@@ -59,6 +60,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     conf = Config(args.config)
+    init_db()
 
     if args.nodaemon:
         logger.basicConfig(format='[%(asctime)s] %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p', level=logger.DEBUG)
