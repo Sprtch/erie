@@ -3,6 +3,7 @@ from erie.logger import logger
 from erie.processor import Processor
 from erie.devices.inputdevice import InputDeviceWrapper
 from erie.devices.serialdevice import SerialWrapper
+from despinassy.redis import redis_subscribers_num
 from erie.db import db, init_db
 from daemonize import Daemonize
 import os
@@ -18,12 +19,15 @@ r = redis.Redis(host='localhost', port=6379, db=0)
 p = r.pubsub()
 
 def send_to_print(msg):
-    logger.info("Scanned '%s'" % (msg.barcode))
     try: 
-        r.publish(
-            msg.redis or REDIS_PUB_CHAN_DEFAULT, 
-            json.dumps(msg._asdict())
-        )
+        chan = msg.redis or REDIS_PUB_CHAN_DEFAULT
+        if redis_subscribers_num(r, chan):
+            r.publish(
+                chan,
+                json.dumps(msg._asdict())
+            )
+        else:
+            logger.warning("No recipient for the message: ''%s'" % (str(msg._asdict())))
     except redis.ConnectionError as e:
         logger.error(e)
 
@@ -61,7 +65,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     conf = Config(args.config)
-    init_db()
+    init_db(conf.db)
 
     if args.nodaemon:
         logger.basicConfig(format='[%(asctime)s] %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p', level=logger.DEBUG)

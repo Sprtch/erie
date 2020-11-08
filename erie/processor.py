@@ -1,14 +1,18 @@
 from despinassy import Part
 from erie.message import BarcodeMessage, Message
+from erie.logger import logger
 
 class Scanner:
     @staticmethod
     def retrieve_from_db(msg):
-        in_db = Part.query.get(msg.barcode)
+        in_db = Part.query.filter(Part.barcode == msg.barcode).first()
         if in_db:
-            return Message(name=in_db.name, **msg._asdict())
+            msg = Message(name=in_db.name, **msg._asdict())
+            logger.info("[%s] Scanned '%s' and found '%s'" % (msg.origin, msg.barcode, msg.name))
         else:
-            return Message(message='', **msg._asdict())
+            msg = Message(name='', **msg._asdict())
+            logger.info("[%s] Scanned '%s'" % (msg.origin, msg.barcode))
+        return msg
 
     @staticmethod
     def process(msg):

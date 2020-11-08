@@ -1,3 +1,6 @@
+despinassy:
+    uri: "sqlite:///../database.db"
+
 erie:
     redis: "victoria"
     devices:

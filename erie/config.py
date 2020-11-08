@@ -12,10 +12,13 @@ class Config:
 
     def __init__(self, configpath):
         self.devices = []
+        self.db = None
         if os.path.isfile(configpath):
             raw = yaml.load(open(configpath, 'r'), Loader=yaml.FullLoader)
         else:
             raise InvalidConfigFile('No config file in "%s"' % (configpath))
+
+        self.db = raw.get('despinassy', {})
 
         if raw.get('erie') is not None:
             config = raw['erie']
