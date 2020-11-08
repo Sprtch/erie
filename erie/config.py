@@ -15,7 +15,7 @@ class Config:
         if os.path.isfile(configpath):
             raw = yaml.load(open(configpath, 'r'), Loader=yaml.FullLoader)
         else:
-            pass # TODO Load default config
+            raise InvalidConfigFile('No config file in "%s"' % (configpath))
 
         if raw.get('erie') is not None:
             config = raw['erie']
@@ -25,9 +25,6 @@ class Config:
         redis_default = config.get('redis', Config.REDIS_DEFAULT_CHAN)
 
         devices = config.get('devices', [])
-        # if type(devices) != list:
-        #     logger.error("")
-        #     raise InvalidConfigFile("Invalid configuration provided")
 
         for dev in devices:
             name, content = list(dev.items())[0]
