@@ -9,6 +9,7 @@ import os
 import argparse
 import redis
 import queue, threading
+import json
 
 APPNAME = "erie"
 REDIS_PUB_CHAN_DEFAULT = "victoria"
@@ -21,7 +22,7 @@ def send_to_print(msg):
     try: 
         r.publish(
             msg.redis or REDIS_PUB_CHAN_DEFAULT, 
-            '{"name": "%s", "barcode": "%s", "origin": "%s"}' % (msg.barcode, msg.barcode, msg.origin)
+            json.dumps(msg._asdict())
         )
     except redis.ConnectionError as e:
         logger.error(e)
