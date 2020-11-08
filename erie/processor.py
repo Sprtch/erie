@@ -6,9 +6,9 @@ class Scanner:
     def retrieve_from_db(msg):
         in_db = Part.query.get(msg.barcode)
         if in_db:
-            return Message(name=in_db.name, **msg)
+            return Message(name=in_db.name, **msg._asdict())
         else:
-            return Message(message='', **msg)
+            return Message(message='', **msg._asdict())
 
     @staticmethod
     def process(msg):
