@@ -1,5 +1,5 @@
 from erie.logger import logger
-from erie.message import BarcodeMessage 
+from erie.message import BarcodeMessage
 import time
 
 class DeviceWrapper:

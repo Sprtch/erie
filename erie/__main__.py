@@ -3,7 +3,7 @@ from erie.logger import logger
 from erie.processor import Processor
 from erie.devices.inputdevice import InputDeviceWrapper
 from erie.devices.serialdevice import SerialWrapper
-from despinassy.redis import redis_subscribers_num
+from despinassy.ipc import redis_subscribers_num, ipc_create_print_message
 from erie.db import db, init_db
 from daemonize import Daemonize
 import os
@@ -21,10 +21,11 @@ p = r.pubsub()
 def send_to_print(msg):
     try: 
         chan = msg.redis or REDIS_PUB_CHAN_DEFAULT
+        ipc_msg = ipc_create_print_message(msg)._asdict()
         if redis_subscribers_num(r, chan):
             r.publish(
                 chan,
-                json.dumps(msg._asdict())
+                json.dumps(ipc_msg)
             )
         else:
             logger.warning("No recipient for the message: ''%s'" % (str(msg._asdict())))
