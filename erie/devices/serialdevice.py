@@ -21,7 +21,7 @@ class SerialWrapper(DeviceWrapper):
             self.info("Barcode scanner found")
             self._dev = serial.Serial(self.path, 9600, timeout=1)
         else:
-            self.warning("Still no barcode scanner found")
+            self.debug("Still no barcode scanner found")
             self._dev = None
 
         return self._dev is not None

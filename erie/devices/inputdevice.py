@@ -35,7 +35,7 @@ class InputDeviceWrapper(DeviceWrapper):
             self._dev = None
             self.warning("Barcode disconnected")
         else:
-            self.warning("Still no barcode scanner plugged")
+            self.debug("Still no barcode scanner plugged")
 
         return self._dev is not None
 

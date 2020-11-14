@@ -8,6 +8,9 @@ class DeviceWrapper:
         self.name = name
         self.redis = redis
 
+    def debug(self, msg):
+        logger.debug("[%s:%s] %s" % (self._device_type, self.name, msg))
+
     def info(self, msg):
         logger.info("[%s:%s] %s" % (self._device_type, self.name, msg))
 

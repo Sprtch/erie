@@ -28,7 +28,7 @@ def send_to_print(msg):
                 json.dumps(ipc_msg)
             )
         else:
-            logger.warning("No recipient for the message: ''%s'" % (str(msg._asdict())))
+            logger.warning("No recipient for the message: ''%s'" % (str(ipc_msg)))
     except redis.ConnectionError as e:
         logger.error(e)
 
@@ -60,6 +60,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('--no-daemon', dest='nodaemon', action='store_true', help='Does not start the program as a daemon')
     parser.add_argument('--logfile', dest='logfile', type=str, help='Log destination', default=("/var/log/%s.log" % APPNAME))
+    parser.add_argument('--debug', dest='debuglevel', action='store_true', help='Set the log level to show debug messages')
     parser.add_argument('--pid', dest='pid', type=str, help='Pid destination', default=("/var/run/%s.pid" % APPNAME))
     parser.add_argument('-c', '--config', dest='config', type=str, help='Config file location', default=("./config.yaml"))
 
@@ -68,16 +69,17 @@ if __name__ == "__main__":
     conf = Config(args.config)
     init_db(conf.db)
 
+    loglevel = logger.DEBUG if args.debuglevel else logger.INFO
     if args.nodaemon:
-        logger.basicConfig(format='[%(asctime)s] %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p', level=logger.DEBUG)
+        logger.basicConfig(format='[%(asctime)s] %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p', level=loglevel)
         main(conf)
     else:
         logger = logger.getLogger(__name__)
-        logger.setLevel(logger.DEBUG)
+        logger.setLevel(loglevel)
         logger.propagate = False
 
         fh = logger.FileHandler(args.logfile, "w")
-        fh.setLevel(logger.DEBUG)
+        fh.setLevel(loglevel)
         formatter = logger.Formatter(fmt='[%(asctime)s] %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
         fh.setFormatter(formatter)
 
