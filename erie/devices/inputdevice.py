@@ -1,5 +1,6 @@
 from erie.devices.device import DeviceWrapper
-from evdev import InputDevice, categorize, ecodes
+from evdev import InputDevice, categorize
+from evdev.ecodes import EV_KEY, KEY
 import os
 
 class InputDeviceWrapper(DeviceWrapper):
@@ -42,10 +43,10 @@ class InputDeviceWrapper(DeviceWrapper):
         barcode = ''
         try:
             for ev in self._dev.read_loop():
-                if ev.type == ecodes.EV_KEY:
+                if ev.type == EV_KEY:
                     data = categorize(ev)
                     if (data.keystate == 0):
-                        key = ecodes.KEY[data.scancode][4:] # Remove the "KEY_" default character of ecode to only get the key
+                        key = KEY[data.scancode][4:] # Remove the "KEY_" default character of ecode to only get the key
                         key = InputDeviceWrapper.KEYBOARD_TRANSLATE.get(key, key)
                         if (key == None and barcode) or key == 'ENTER':
                             yield barcode
