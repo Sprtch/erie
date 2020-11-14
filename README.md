@@ -14,10 +14,38 @@ command to log in the console.
 
 ```txt
 > source venv/bin/activate
+> venv/bin/python erie -h
+usage: erie [-h] [--no-daemon] [--logfile LOGFILE] [--pid PID] [-c CONFIG]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --no-daemon           Does not start the program as a daemon
+  --logfile LOGFILE     Log destination
+  --pid PID             Pid destination
+  -c CONFIG, --config CONFIG
+                        Config file location
 > venv/bin/python erie --no-daemon
 ```
 
 ## Config
+
+The program is configurable by passing a `.yaml` file as argument (with ` c` argument) formatted in the following way:
+
+```
+despinassy:
+    uri: str
+
+erie:
+    redis: str
+    devices:
+        - (str):
+            type: "serial"
+            id: str
+            baudrate: int
+        - (str):
+            type: "evdev"
+            id: str
+```
 
 ## Useful Links
 
