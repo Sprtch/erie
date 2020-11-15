@@ -9,6 +9,7 @@ class InputDeviceWrapper(DeviceWrapper):
     KEYBOARD_TRANSLATE = {
         # Keyboard code: actual number
         'LEFTSHIFT': '',
+        'SEMICOLON': ':',
         'SLASH': '/',
     }
 
@@ -47,6 +48,7 @@ class InputDeviceWrapper(DeviceWrapper):
                     data = categorize(ev)
                     if (data.keystate == 0):
                         key = KEY[data.scancode][4:] # Remove the "KEY_" default character of ecode to only get the key
+                        print(data, key)
                         key = InputDeviceWrapper.KEYBOARD_TRANSLATE.get(key, key)
                         if (key == None and barcode) or key == 'ENTER':
                             yield barcode
