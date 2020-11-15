@@ -28,7 +28,7 @@ def send_to_print(msg):
                 json.dumps(ipc_msg)
             )
         else:
-            logger.warning("No recipient for the message: ''%s'" % (str(ipc_msg)))
+            logger.warning("No recipient on channel '%s' for the message: ''%s'" % (chan, str(ipc_msg)))
     except redis.ConnectionError as e:
         logger.error(e)
 

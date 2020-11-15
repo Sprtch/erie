@@ -1,5 +1,6 @@
+from despinassy.ipc import create_nametuple
 from erie.logger import logger
-from erie.message import BarcodeMessage
+from erie.message import Message
 import time
 
 class DeviceWrapper:
@@ -32,4 +33,4 @@ class DeviceWrapper:
                 time.sleep(5)
                 continue
             for x in self.retrieve():
-                yield BarcodeMessage(x, self.name, self.redis)
+                yield create_nametuple(Message, {}, barcode=x, origin=self.name, redis=self.redis)
