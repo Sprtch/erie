@@ -40,6 +40,10 @@ class Processor:
     def __init__(self, dev):
         self.dev = dev
         self._mode = PrintModeProcessor
+        self._process_pipe = None
+        self._reset_process_pipe()
+
+    def _reset_process_pipe(self):
         self._process_pipe = lambda x: x
 
     def delay(self, proc: ProcessorDelay):
@@ -51,13 +55,15 @@ class Processor:
 
     def process(self, msg):
         result = self._process_pipe(self._mode.process(msg))
-        self._process_pipe = lambda x: x
+        self._reset_process_pipe()
         return result
 
     def match(self, msg: Message):
         if msg.barcode.startswith("SPRTCHCMD:"):
             _, processor, argument = msg.barcode.split(":")
-            if processor == "MULTIPLIER":
+            if processor == "CANCEL":
+                return ("EXEC", self._reset_process_pipe)
+            elif processor == "MULTIPLIER":
                 number = int(argument) if argument.isdecimal() else 1
                 return ("DELAY", MultiplierProcessor(number))
             elif processor == "MODE":
@@ -66,15 +72,19 @@ class Processor:
                 elif argument == "PRINT":
                     return ("STORE", PrintModeProcessor)
         else:
-            return ("EXEC", msg)
+            return ("PROCESS", msg)
+
+        return ("NULL", None)
 
     def read(self):
         for msg in self.dev.read_loop():
             print(msg)
             mode, arg = self.match(msg)
-            if mode == "DELAY":
+            if mode == "EXEC":
+                arg()
+            elif mode == "DELAY":
                 self.delay(arg)
             elif mode == "STORE":
                 self.store(arg)
-            elif mode == "EXEC":
+            elif mode == "PROCESS":
                 yield self.process(arg)
