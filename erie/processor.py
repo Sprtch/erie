@@ -23,27 +23,40 @@ class PrintModeProcessor(ProcessorMode):
 class InventoryModeProcessor(ProcessorMode):
     @staticmethod
     def process(msg: Message) -> Message:
-        return msg
+        p = Part.query.filter(Part.barcode == msg.barcode).first()
+        # TODO Verify Inventory existence
+        i = Inventory(part=p)
+        db.session.add(i)
+        db.session.commit()
 
 class ProcessorDelay:
     def delay(self, msg: Message) -> Message:
         raise NotImplementedError
 
 class MultiplierProcessor(ProcessorDelay):
-    def __init__(self, multiplier):
+    def __init__(self, multiplier: int):
         self.multiplier = multiplier
 
     def delay(self, msg: Message) -> Message:
         return create_nametuple(Message, msg, number=(int(msg.number) * self.multiplier))
+
+class DigitProcessor(ProcessorDelay):
+    def __init__(self, digit: int):
+        self.digit = digit
+
+    def delay(self, msg: Message) -> Message:
+        return create_nametuple(Message, msg, number=(int(str(msg.number) + str(self.digit))))
 
 class Processor:
     def __init__(self, dev):
         self.dev = dev
         self._mode = PrintModeProcessor
         self._process_pipe = None
+        self._process_pipe_length = 0
         self._reset_process_pipe()
 
     def _reset_process_pipe(self):
+        self._process_pipe_length = 0
         self._process_pipe = lambda x: x
 
     def delay(self, proc: ProcessorDelay):
@@ -66,6 +79,9 @@ class Processor:
             elif processor == "MULTIPLIER":
                 number = int(argument) if argument.isdecimal() else 1
                 return ("DELAY", MultiplierProcessor(number))
+            elif processor == "DIGIT":
+                digit = int(argument) if argument.isdecimal() else 1
+                return ("DELAY", DigitProcessor(digit))
             elif processor == "MODE":
                 if argument == "INVENTORY":
                     return ("STORE", InventoryModeProcessor)
@@ -78,13 +94,14 @@ class Processor:
 
     def read(self):
         for msg in self.dev.read_loop():
-            print(msg)
             mode, arg = self.match(msg)
             if mode == "EXEC":
+                self._reset_process_pipe()
                 arg()
             elif mode == "DELAY":
                 self.delay(arg)
             elif mode == "STORE":
+                self._reset_process_pipe()
                 self.store(arg)
             elif mode == "PROCESS":
                 yield self.process(arg)
