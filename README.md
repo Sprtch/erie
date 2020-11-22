@@ -15,17 +15,22 @@ command to log in the console.
 ```txt
 > source venv/bin/activate
 > venv/bin/python erie -h
-usage: erie [-h] [--no-daemon] [--logfile LOGFILE] [--pid PID] [-c CONFIG]
+usage: [-h] [--no-daemon] [--logfile LOGFILE] [--debug] [--pid PID] [-c CONFIG]
 
 optional arguments:
   -h, --help            show this help message and exit
   --no-daemon           Does not start the program as a daemon
   --logfile LOGFILE     Log destination
+  --debug               Set the log level to show debug messages
   --pid PID             Pid destination
   -c CONFIG, --config CONFIG
                         Config file location
 > venv/bin/python erie --no-daemon
 ```
+
+In development mode its recommended to launch _erie_ with the `--debug` option.
+The _debug_ mode automatically handle the incoming data from the command line
+to avoid to have to use a barcode scanner to input data.
 
 ## Config
 
