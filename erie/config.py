@@ -1,5 +1,6 @@
 from erie.devices.inputdevice import InputDeviceWrapper
 from erie.devices.serialdevice import SerialWrapper
+from erie.devices.stdindevice import StdinWrapper
 from erie.logger import logger
 import os
 import yaml
@@ -10,7 +11,7 @@ class InvalidConfigFile(Exception):
 class Config:
     REDIS_DEFAULT_CHAN = "victoria"
 
-    def __init__(self, configpath):
+    def __init__(self, configpath, debug=False):
         self.devices = []
         self.db = None
         if os.path.isfile(configpath):
@@ -42,5 +43,10 @@ class Config:
                 self.devices.append(InputDeviceWrapper(**args))
             elif devicetype == 'serial':
                 self.devices.append(SerialWrapper(**args))
+            elif devicetype == 'stdin':
+                self.devices.append(StdinWrapper(**args))
             else:
                 raise InvalidConfigFile("Type not supported")
+
+        if debug and not len(list(filter(lambda x: isinstance(x, StdinWrapper), self.devices))):
+            self.devices.append(StdinWrapper(name="STDIN", redis=redis_default))        
