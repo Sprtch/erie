@@ -62,7 +62,7 @@ class Processor:
         if msg.barcode.startswith("SPRTCHCMD:"):
             _, processor, argument = msg.barcode.split(":")
             if processor == "CANCEL":
-                return ("EXEC", self._reset_process_pipe)
+                return ("ACTION", self._reset_process_pipe)
             elif processor == "MULTIPLIER":
                 number = int(argument) if argument.isdecimal() else 1
                 return ("DELAY", MultiplierProcessor(number))
@@ -80,7 +80,7 @@ class Processor:
         for msg in self.dev.read_loop():
             print(msg)
             mode, arg = self.match(msg)
-            if mode == "EXEC":
+            if mode == "ACTION":
                 arg()
             elif mode == "DELAY":
                 self.delay(arg)
