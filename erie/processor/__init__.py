@@ -27,7 +27,7 @@ class Processor:
     def match(self, msg: Message):
         if msg.barcode.startswith("SPRTCHCMD:"):
             _, processor, argument = msg.barcode.split(":")
-            if processor == "CANCEL":
+            if processor == "CLEAR":
                 return ("ACTION", self._reset_process_pipe)
             elif processor == "MULTIPLIER":
                 number = int(argument) if argument.isdecimal() else 1
