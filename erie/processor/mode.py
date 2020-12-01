@@ -1,7 +1,12 @@
 from despinassy import Part, Inventory, db
-from despinassy.ipc import create_nametuple
+from despinassy.ipc import create_nametuple, redis_subscribers_num, ipc_create_print_message
 from erie.message import Message
 from erie.logger import logger
+from redis import ConnectionError, Redis
+import json
+
+r = Redis(host='localhost', port=6379, db=0)
+p = r.pubsub()
 
 class ProcessorMode:
     @staticmethod
@@ -10,7 +15,21 @@ class ProcessorMode:
 
 class PrintModeProcessor(ProcessorMode):
     @staticmethod
-    def process(msg: Message) -> Message:
+    def execute(msg: Message):
+        try: 
+            ipc_msg = ipc_create_print_message(msg)._asdict()
+            if redis_subscribers_num(r, msg.redis):
+                r.publish(
+                    msg.redis,
+                    json.dumps(ipc_msg)
+                )
+            else:
+                logger.warning("[%s] No recipient on channel '%s' for the message: ''%s'" % (msg.origin, msg.redis, str(ipc_msg)))
+        except ConnectionError as e:
+            logger.error(e)
+
+    @staticmethod
+    def process(msg: Message):
         in_db = Part.query.filter(Part.barcode == msg.barcode).first()
         if in_db:
             msg = create_nametuple(Message, msg._asdict(), name=in_db.name)
@@ -18,10 +37,10 @@ class PrintModeProcessor(ProcessorMode):
         else:
             msg = create_nametuple(Message, msg._asdict(), name='')
             logger.info("[%s] Scanned '%s'" % (msg.origin, msg.barcode))
-        return msg
+
+        PrintModeProcessor.execute(msg)
 
 class InventoryModeProcessor(ProcessorMode):
     @staticmethod
-    def process(msg: Message) -> Message:
-        return msg
-
+    def process(msg: Message):
+        pass

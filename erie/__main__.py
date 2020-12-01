@@ -3,34 +3,14 @@ from erie.logger import logger
 from erie.processor import Processor
 from erie.devices.inputdevice import InputDeviceWrapper
 from erie.devices.serialdevice import SerialWrapper
-from despinassy.ipc import redis_subscribers_num, ipc_create_print_message
 from erie.db import db, init_db
 from daemonize import Daemonize
 import os
 import argparse
-import redis
 import queue, threading
 import json
 
 APPNAME = "erie"
-REDIS_PUB_CHAN_DEFAULT = "victoria"
-
-r = redis.Redis(host='localhost', port=6379, db=0)
-p = r.pubsub()
-
-def send_to_print(msg):
-    try: 
-        chan = msg.redis or REDIS_PUB_CHAN_DEFAULT
-        ipc_msg = ipc_create_print_message(msg)._asdict()
-        if redis_subscribers_num(r, chan):
-            r.publish(
-                chan,
-                json.dumps(ipc_msg)
-            )
-        else:
-            logger.warning("No recipient on channel '%s' for the message: ''%s'" % (chan, str(ipc_msg)))
-    except redis.ConnectionError as e:
-        logger.error(e)
 
 def gen_multiplex(genlist):
     item_q = queue.Queue()
@@ -53,8 +33,8 @@ def gen_multiplex(genlist):
         yield item
 
 def main(conf):
-    for msg in gen_multiplex(map(lambda x: x.read(), map(lambda x: Processor(x), conf.devices))):
-        send_to_print(msg)
+    for _ in gen_multiplex(map(lambda x: x.read(), map(lambda x: Processor(x), conf.devices))):
+        pass
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='')
