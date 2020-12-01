@@ -20,7 +20,7 @@ class Processor:
         self._mode = proc
 
     def process(self, msg):
-        result = self._process_pipe(self._mode.process(msg))
+        result = self._mode.process(self._process_pipe(msg))
         self._reset_process_pipe()
         return result
 

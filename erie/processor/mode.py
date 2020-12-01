@@ -43,4 +43,17 @@ class PrintModeProcessor(ProcessorMode):
 class InventoryModeProcessor(ProcessorMode):
     @staticmethod
     def process(msg: Message):
-        pass
+        in_db = Part.query.filter(Part.barcode == msg.barcode).first()
+        if in_db:
+            msg = create_nametuple(Message, msg._asdict(), name=in_db.name)
+            i = None
+            if len(in_db.inventories):
+                i = in_db.inventories[0]
+                i.add(msg.number)
+            else:
+                i = Inventory(part=in_db, quantity=msg.number)
+                db.session.add(i)
+            logger.info("[%s] '%s' added %i time to Inventory (now %i entry)" % (msg.origin, msg.barcode, msg.number, i.quantity))
+            db.session.commit()
+        else:
+            logger.warning("[%s] Barcode '%s' not found" % (msg.origin, msg.barcode))
