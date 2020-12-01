@@ -12,12 +12,17 @@ class Processor:
     def _reset_process_pipe(self):
         self._process_pipe = lambda x: x
 
+    def action(self, fun):
+        fun()
+        self._reset_process_pipe()
+
     def delay(self, proc: ProcessorDelay):
         pipe = self._process_pipe
         self._process_pipe = lambda x : proc.delay(pipe(x))
 
     def store(self, proc: ProcessorMode):
         self._mode = proc
+        self._reset_process_pipe()
 
     def process(self, msg):
         result = self._mode.process(self._process_pipe(msg))
@@ -47,7 +52,7 @@ class Processor:
             print(msg)
             mode, arg = self.match(msg)
             if mode == "ACTION":
-                arg()
+                self.action(arg)
             elif mode == "DELAY":
                 self.delay(arg)
             elif mode == "STORE":
