@@ -1,5 +1,5 @@
 from erie.processor.mode import ProcessorMode, PrintModeProcessor, InventoryModeProcessor
-from erie.processor.delay import ProcessorDelay, MultiplierProcessor
+from erie.processor.delay import ProcessorDelay, MultiplierProcessor, NegativeProcessor
 from erie.message import Message
 
 class Processor:
@@ -37,6 +37,8 @@ class Processor:
             elif processor == "MULTIPLIER":
                 number = int(argument) if argument.isdecimal() else 1
                 return ("DELAY", MultiplierProcessor(number))
+            elif processor == "NEGATIVE":
+                return ("DELAY", NegativeProcessor())
             elif processor == "MODE":
                 if argument == "INVENTORY":
                     return ("STORE", InventoryModeProcessor)

@@ -11,3 +11,10 @@ class MultiplierProcessor(ProcessorDelay):
 
     def delay(self, msg: Message) -> Message:
         return create_nametuple(Message, msg, number=(int(msg.number) * self.multiplier))
+
+class NegativeProcessor(ProcessorDelay):
+    def __init__(self, arg=None):
+        pass
+
+    def delay(self, msg: Message) -> Message:
+        return create_nametuple(Message, msg, number=(int(msg.number) * -1))
