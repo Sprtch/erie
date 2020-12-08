@@ -33,31 +33,30 @@ class Processor:
         if msg.barcode.startswith("SPRTCHCMD:"):
             _, processor, argument = msg.barcode.split(":")
             if processor == "CLEAR":
-                return ("ACTION", self._reset_process_pipe)
+                return self._reset_process_pipe
             elif processor == "MULTIPLIER":
                 number = int(argument) if argument.isdecimal() else 1
-                return ("DELAY", MultiplierProcessor(number))
+                return MultiplierProcessor(number)
             elif processor == "NEGATIVE":
-                return ("DELAY", NegativeProcessor())
+                return NegativeProcessor()
             elif processor == "MODE":
                 if argument == "INVENTORY":
-                    return ("STORE", InventoryModeProcessor)
+                    return InventoryModeProcessor
                 elif argument == "PRINT":
-                    return ("STORE", PrintModeProcessor)
+                    return PrintModeProcessor
         else:
-            return ("PROCESS", msg)
+            return msg
 
         return ("NULL", None)
 
     def read(self):
         for msg in self.dev.read_loop():
-            print(msg)
-            mode, arg = self.match(msg)
-            if mode == "ACTION":
-                self.action(arg)
-            elif mode == "DELAY":
-                self.delay(arg)
-            elif mode == "STORE":
-                self.store(arg)
-            elif mode == "PROCESS":
-                yield self.process(arg)
+            mode = self.match(msg)
+            if isinstance(mode, Message):
+                yield self.process(mode)
+            elif isinstance(mode, ProcessorDelay):
+                self.delay(mode)
+            elif isinstance(mode, ProcessorMode):
+                self.store(mode)
+            elif callable(mode):
+                self.action(mode)
