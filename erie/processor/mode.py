@@ -9,13 +9,11 @@ r = Redis(host='localhost', port=6379, db=0)
 p = r.pubsub()
 
 class ProcessorMode:
-    @staticmethod
-    def process(msg: Message) -> Message:
+    def process(self, msg: Message) -> Message:
         raise NotImplementedError
 
 class PrintModeProcessor(ProcessorMode):
-    @staticmethod
-    def execute(msg: Message):
+    def execute(self, msg: Message):
         try: 
             ipc_msg = ipc_create_print_message(msg)._asdict()
             if redis_subscribers_num(r, msg.redis):
@@ -28,8 +26,7 @@ class PrintModeProcessor(ProcessorMode):
         except ConnectionError as e:
             logger.error(e)
 
-    @staticmethod
-    def process(msg: Message):
+    def process(self, msg: Message):
         in_db = Part.query.filter(Part.barcode == msg.barcode).first()
         if in_db:
             msg = create_nametuple(Message, msg._asdict(), name=in_db.name)
@@ -38,11 +35,10 @@ class PrintModeProcessor(ProcessorMode):
             msg = create_nametuple(Message, msg._asdict(), name='')
             logger.info("[%s] Scanned '%s'" % (msg.origin, msg.barcode))
 
-        PrintModeProcessor.execute(msg)
+        self.execute(msg)
 
 class InventoryModeProcessor(ProcessorMode):
-    @staticmethod
-    def process(msg: Message):
+    def process(self, msg: Message):
         in_db = Part.query.filter(Part.barcode == msg.barcode).first()
         if in_db:
             msg = create_nametuple(Message, msg._asdict(), name=in_db.name)

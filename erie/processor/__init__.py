@@ -41,13 +41,11 @@ class Processor:
                 return NegativeProcessor()
             elif processor == "MODE":
                 if argument == "INVENTORY":
-                    return InventoryModeProcessor
+                    return InventoryModeProcessor()
                 elif argument == "PRINT":
-                    return PrintModeProcessor
+                    return PrintModeProcessor()
         else:
             return msg
-
-        return ("NULL", None)
 
     def read(self):
         for msg in self.dev.read_loop():
