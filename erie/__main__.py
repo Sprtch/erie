@@ -5,6 +5,7 @@ from erie.devices.inputdevice import InputDeviceWrapper
 from erie.devices.serialdevice import SerialWrapper
 from erie.db import db, init_db
 from daemonize import Daemonize
+import logging
 import os
 import argparse
 import queue, threading
@@ -58,7 +59,7 @@ if __name__ == "__main__":
         logger.setLevel(loglevel)
         logger.propagate = False
 
-        fh = logger.FileHandler(args.logfile, "w")
+        fh = logging.FileHandler(args.logfile, "w")
         fh.setLevel(loglevel)
         formatter = logger.Formatter(fmt='[%(asctime)s] %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
         fh.setFormatter(formatter)
