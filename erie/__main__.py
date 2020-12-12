@@ -61,7 +61,7 @@ if __name__ == "__main__":
 
         fh = logging.FileHandler(args.logfile, "w")
         fh.setLevel(loglevel)
-        formatter = logger.Formatter(fmt='[%(asctime)s] %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+        formatter = logging.Formatter(fmt='[%(asctime)s] %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
         fh.setFormatter(formatter)
 
         logger.addHandler(fh)
