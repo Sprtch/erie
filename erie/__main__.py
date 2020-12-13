@@ -8,34 +8,19 @@ from daemonize import Daemonize
 import logging
 import os
 import argparse
-import queue, threading
+import threading
 import json
 
 APPNAME = "erie"
 
-def gen_multiplex(genlist):
-    item_q = queue.Queue()
-    def run_one(source):
-        for item in source: item_q.put(item)
-
-    def run_all():
-        thrlist = []
-        for source in genlist:
-            t = threading.Thread(target=run_one,args=(source,))
-            t.start()
-            thrlist.append(t)
-        for t in thrlist: t.join()
-        item_q.put(StopIteration)
-
-    threading.Thread(target=run_all).start()
-    while True:
-        item = item_q.get()
-        if item is StopIteration: return
-        yield item
-
 def main(conf):
-    for _ in gen_multiplex(map(lambda x: x.read(), map(lambda x: Processor(x), conf.devices))):
-        pass
+    thrlist = []
+    for dev in conf.devices:
+        t = threading.Thread(target=Processor(dev).read)
+        t.start()
+        thrlist.append(t)
+
+    for t in thrlist: t.join()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='')
@@ -49,6 +34,7 @@ if __name__ == "__main__":
 
     conf = Config(args.config, debug=args.debuglevel)
     init_db(conf.db)
+    print(conf.devices)
 
     loglevel = logger.DEBUG if args.debuglevel else logger.INFO
     if args.nodaemon:
