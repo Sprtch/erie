@@ -34,7 +34,6 @@ if __name__ == "__main__":
 
     conf = Config(args.config, debug=args.debuglevel)
     init_db(conf.db)
-    print(conf.devices)
 
     loglevel = logger.DEBUG if args.debuglevel else logger.INFO
     if args.nodaemon:
