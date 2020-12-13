@@ -3,7 +3,7 @@ from erie.processor.delay import ProcessorDelay, MultiplierProcessor, NegativePr
 from erie.message import Message
 
 class Processor:
-    def __init__(self, dev, mode=PrintModeProcessor):
+    def __init__(self, dev, mode=PrintModeProcessor()):
         self.dev = dev
         self._mode = mode
         self._process_pipe = None
@@ -51,7 +51,7 @@ class Processor:
         for msg in self.dev.read_loop():
             mode = self.match(msg)
             if isinstance(mode, Message):
-                yield self.process(mode)
+                self.process(mode)
             elif isinstance(mode, ProcessorDelay):
                 self.delay(mode)
             elif isinstance(mode, ProcessorMode):
