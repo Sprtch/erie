@@ -34,9 +34,10 @@ to avoid to have to use a barcode scanner to input data.
 
 ## Config
 
-The program is configurable by passing a `.yaml` file as argument (with ` c` argument) formatted in the following way:
+The program is configurable by passing a `.yaml` file as argument (with `.c`
+argument) formatted in the following way:
 
-```
+```yaml
 despinassy:
     uri: <database uri>
 
@@ -59,14 +60,15 @@ The program can detect formatted input commands scanned from a barcode scanner.
 The commands are prefixed with `SPRTCHCMD:` and have the following
 structure
 
-```
+```txt
 SPRTCHCMD:<cmd_name>:<arguments>
 ```
 
 There are two types of commands scannable.
 
-* The one that change the mode the barcode scanner the command is scanned from, is operating in.
-* The one that modify the behaviour of the next scanned barcode.
+* The one that change the mode the barcode scanner the command is scanned from,
+  is operating in.
+* The one that modify the result of the next scanned barcode.
 
 ### Mode
 
@@ -80,12 +82,12 @@ scanner and is unique to each scanner device.
 In this mode the scanned barcodes will be directly sent
 to the printer through redis.
 
-The print mode is the default mode. 
+The print mode is the default mode.
 
 #### Inventory Mode: `SPRTCHCMD:MODE:INVENTORY`
 
 In this mode the scanned barcodes will get logged to the `inventory` table in
-the database. 
+the database.
 If the entry already exists in the database it will update the entry to
 increment the count.
 
@@ -96,8 +98,8 @@ executed once the program receive a barcode.
 
 #### Multiplier: `SPRTCHCMD:MULTIPLIER:<multiplier>`
 
-Depending on the current mode the program is operating in, it will multiply 
-the next action on a barcode (by default an action is applied 1 time) by the 
+Depending on the current mode the program is operating in, it will multiply
+the next action on a barcode (by default an action is applied 1 time) by the
 number passed in the argument of the command.
 
 * In print mode, it will multiply the number of barcode that get printed.
