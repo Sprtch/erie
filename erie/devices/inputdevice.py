@@ -3,9 +3,10 @@ from evdev import InputDevice, categorize
 from evdev.ecodes import EV_KEY, KEY
 import os
 
+
 class InputDeviceWrapper(DeviceWrapper):
-    # Make the keyboard mapping between the scandata received from evdev and the
-    # actual value on the keyboard (should be qwerty).
+    # Make the keyboard mapping between the scandata received from evdev and
+    # the actual value on the keyboard (should be qwerty).
     KEYBOARD_TRANSLATE = {
         # Keyboard code: actual number
         'LEFTSHIFT': '',
@@ -32,7 +33,7 @@ class InputDeviceWrapper(DeviceWrapper):
             self._dev = InputDevice(self.path)
             self._dev.grab()
         elif self._dev:
-            self._dev.ungrab() # Test this case
+            self._dev.ungrab()  # Test this case
             self._dev = None
             self.warning("Barcode disconnected")
         else:
@@ -47,9 +48,11 @@ class InputDeviceWrapper(DeviceWrapper):
                 if ev.type == EV_KEY:
                     data = categorize(ev)
                     if (data.keystate == 0):
-                        key = KEY[data.scancode][4:] # Remove the "KEY_" default character of ecode to only get the key
-                        key = InputDeviceWrapper.KEYBOARD_TRANSLATE.get(key, key)
-                        if (key == None and barcode) or key == 'ENTER':
+                        key = KEY[data.scancode][
+                            4:]  # Remove the "KEY_" default character of ecode to only get the key
+                        key = InputDeviceWrapper.KEYBOARD_TRANSLATE.get(
+                            key, key)
+                        if (key is None and barcode) or key == 'ENTER':
                             yield barcode
                             barcode = ''
                         elif len(key):

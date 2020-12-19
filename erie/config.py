@@ -5,8 +5,10 @@ from erie.logger import logger
 import os
 import yaml
 
+
 class InvalidConfigFile(Exception):
     pass
+
 
 class Config:
     REDIS_DEFAULT_CHAN = "victoria"
@@ -25,7 +27,7 @@ class Config:
             config = raw['erie']
         else:
             raise InvalidConfigFile("No 'erie' field in the config file.")
-        
+
         redis_default = config.get('redis', Config.REDIS_DEFAULT_CHAN)
 
         devices = config.get('devices', [])
@@ -48,5 +50,9 @@ class Config:
             else:
                 raise InvalidConfigFile("Type not supported")
 
-        if debug and not len(list(filter(lambda x: isinstance(x, StdinWrapper), self.devices))):
-            self.devices.append(StdinWrapper(name="STDIN", redis=redis_default))        
+        if debug and not len(
+                list(
+                    filter(lambda x: isinstance(x, StdinWrapper),
+                           self.devices))):
+            self.devices.append(StdinWrapper(name="STDIN",
+                                             redis=redis_default))

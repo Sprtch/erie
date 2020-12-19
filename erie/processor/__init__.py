@@ -2,6 +2,7 @@ from erie.processor.mode import ProcessorMode, PrintModeProcessor, InventoryMode
 from erie.processor.delay import ProcessorDelay, MultiplierProcessor, NegativeProcessor
 from erie.message import Message
 
+
 class Processor:
     def __init__(self, dev, mode=PrintModeProcessor()):
         self.dev = dev
@@ -18,7 +19,7 @@ class Processor:
 
     def delay(self, proc: ProcessorDelay):
         pipe = self._process_pipe
-        self._process_pipe = lambda x : proc.delay(pipe(x))
+        self._process_pipe = lambda x: proc.delay(pipe(x))
 
     def store(self, proc: ProcessorMode):
         self._mode = proc

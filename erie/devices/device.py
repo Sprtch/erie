@@ -3,6 +3,7 @@ from erie.logger import logger
 from erie.message import Message
 import time
 
+
 class DeviceWrapper:
     def __init__(self, devicetype, name, redis):
         self._device_type = devicetype
@@ -33,4 +34,7 @@ class DeviceWrapper:
                 time.sleep(5)
                 continue
             for x in self.retrieve():
-                yield create_nametuple(Message, {}, barcode=x, device=self.name, redis=self.redis)
+                yield create_nametuple(Message, {},
+                                       barcode=x,
+                                       device=self.name,
+                                       redis=self.redis)

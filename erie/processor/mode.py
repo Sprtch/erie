@@ -8,21 +8,23 @@ import json
 r = Redis(host='localhost', port=6379, db=0)
 p = r.pubsub()
 
+
 class ProcessorMode:
     def process(self, msg: Message) -> Message:
         raise NotImplementedError
 
+
 class PrintModeProcessor(ProcessorMode):
     def execute(self, msg: Message):
-        try: 
-            ipc_msg = ipc_create_print_message(msg, origin=IpcOrigin.ERIE)._asdict()
+        try:
+            ipc_msg = ipc_create_print_message(
+                msg, origin=IpcOrigin.ERIE)._asdict()
             if redis_subscribers_num(r, msg.redis):
-                r.publish(
-                    msg.redis,
-                    json.dumps(ipc_msg)
-                )
+                r.publish(msg.redis, json.dumps(ipc_msg))
             else:
-                logger.warning("[%s] No recipient on channel '%s' for the message: ''%s'" % (msg.device, msg.redis, json.dumps(ipc_msg)))
+                logger.warning(
+                    "[%s] No recipient on channel '%s' for the message: ''%s'"
+                    % (msg.device, msg.redis, json.dumps(ipc_msg)))
         except ConnectionError as e:
             logger.error(e)
 
@@ -30,12 +32,14 @@ class PrintModeProcessor(ProcessorMode):
         in_db = Part.query.filter(Part.barcode == msg.barcode).first()
         if in_db:
             msg = create_nametuple(Message, msg._asdict(), name=in_db.name)
-            logger.info("[%s] Scanned '%s' and found '%s'" % (msg.device, msg.barcode, msg.name))
+            logger.info("[%s] Scanned '%s' and found '%s'" %
+                        (msg.device, msg.barcode, msg.name))
         else:
             msg = create_nametuple(Message, msg._asdict(), name='')
             logger.info("[%s] Scanned '%s'" % (msg.device, msg.barcode))
 
         self.execute(msg)
+
 
 class InventoryModeProcessor(ProcessorMode):
     def process(self, msg: Message):
@@ -49,7 +53,9 @@ class InventoryModeProcessor(ProcessorMode):
             else:
                 i = Inventory(part=in_db, quantity=msg.number)
                 db.session.add(i)
-            logger.info("[%s] '%s' added %i time to Inventory (now %i entry)" % (msg.device, msg.barcode, msg.number, i.quantity))
+            logger.info("[%s] '%s' added %i time to Inventory (now %i entry)" %
+                        (msg.device, msg.barcode, msg.number, i.quantity))
             db.session.commit()
         else:
-            logger.warning("[%s] Barcode '%s' not found" % (msg.device, msg.barcode))
+            logger.warning("[%s] Barcode '%s' not found" %
+                           (msg.device, msg.barcode))
