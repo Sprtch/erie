@@ -1,5 +1,5 @@
 import unittest
-from unittest import mock
+import unittest.mock
 import builtins
 from erie.devices.stdindevice import StdinWrapper
 
@@ -8,7 +8,7 @@ class TestDevice(unittest.TestCase):
         device = StdinWrapper("stdin", "test")
 
         self.assertEqual(device.present(), True)
-        with mock.patch.object(builtins, 'input', lambda: 'helloworld'):
+        with unittest.mock.patch.object(builtins, 'input', lambda: 'helloworld'):
             gen = device.retrieve()
             output = next(gen)
             self.assertEqual(output, 'helloworld')
