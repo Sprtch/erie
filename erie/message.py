@@ -2,27 +2,80 @@ import dataclasses
 from typing import Optional
 
 
-class Quantity(int):
-    def __new__(self, value=1):
-        return super(Quantity, self).__new__(self, value)
+class Quantity:
+    def __init__(self, value=1.0, default=True, dotted=False, floating=None):
+        self.value: float = value
+        self.default: bool = default
+        self.dotted: bool = dotted
+        self.floating: int = floating
 
-    def __str__(self):
-        return "%d" % int(self)
+    def digit(self, num: int):
+        if self.default:
+            return Quantity(num, default=False, dotted=False)
+        elif self.dotted:
+            if self.floating is None:
+                newval = float(str(int(self.value)) + "." + str(num))
+                return Quantity(newval,
+                                default=False,
+                                dotted=True,
+                                floating=num)
+
+            else:
+                newval = float(
+                    str(int(self.value)) + "." + str(self.floating) + str(num))
+                return Quantity(newval,
+                                default=False,
+                                dotted=True,
+                                floating=int(str(self.floating) + str(num)))
+        else:
+            return Quantity(float(str(int(self.value)) + str(num)),
+                            default=False,
+                            dotted=self.dotted)
+
+    def dot(self):
+        if self.default:
+            return Quantity(0, default=False, dotted=True)
+        else:
+            return Quantity(int(self), default=False, dotted=True)
+
+    def __add__(self, other):
+        return self.value + other
+
+    def __sub__(self, other):
+        return self.value - other
+
+    def __mul__(self, other):
+        return self.value * other
+
+    def __div__(self, other):
+        return self.value / other
+
+    def __eq__(self, other):
+        return self.value == other.value
+
+    def __int__(self):
+        return int(self.value)
+
+    def __float__(self):
+        return float(self.value)
 
     def __repr__(self):
-        return "%d" % int(self)
+        return str(self.value)
+
+    def __str__(self):
+        return str(self.value)
 
 
 @dataclasses.dataclass
 class Message:
     barcode: str
-    device: str
+    name: str
     redis: str
-    name: Optional[str] = None
+    device: Optional[str] = None
     number: Quantity = Quantity(1)
 
     def __post_init__(self):
-        if isinstance(self.number, int):
+        if isinstance(self.number, int) or isinstance(self.number, float):
             self.number = Quantity(self.number)
         for field in dataclasses.fields(self):
             value = getattr(self, field.name)

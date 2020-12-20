@@ -1,5 +1,5 @@
 from erie.processor.mode import ProcessorMode, PrintModeProcessor, InventoryModeProcessor
-from erie.processor.delay import ProcessorDelay, MultiplierProcessor, NegativeProcessor
+from erie.processor.delay import ProcessorDelay, MultiplierProcessor, NegativeProcessor, DigitProcessor, DotProcessor
 from erie.message import Message
 
 
@@ -25,19 +25,25 @@ class Processor:
         self._mode = proc
         self._reset_process_pipe()
 
-    def process(self, msg):
+    def process(self, msg: Message):
         result = self._mode.process(self._process_pipe(msg))
         self._reset_process_pipe()
         return result
 
     def match(self, msg: Message):
-        if msg.barcode.startswith("SPRTCHCMD:"):
+        if msg.barcode.startswith("SPRTCHCMD:") and len(
+                msg.barcode.split(":")) == 3:
             _, processor, argument = msg.barcode.split(":")
             if processor == "CLEAR":
                 return self._reset_process_pipe
             elif processor == "MULTIPLIER":
                 number = int(argument) if argument.isdecimal() else 1
                 return MultiplierProcessor(number)
+            elif processor == "DIGIT":
+                number = abs(int(argument)) if argument.isdecimal() else 1
+                return DigitProcessor(number)
+            elif processor == "DOTTED":
+                return DotProcessor()
             elif processor == "NEGATIVE":
                 return NegativeProcessor()
             elif processor == "MODE":

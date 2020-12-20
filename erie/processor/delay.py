@@ -14,12 +14,24 @@ class MultiplierProcessor(ProcessorDelay):
     def delay(self, msg: Message) -> Message:
         return create_nametuple(Message,
                                 msg,
-                                number=(int(msg.number) * self.multiplier))
+                                number=(msg.number * self.multiplier))
+
+
+class DigitProcessor(ProcessorDelay):
+    def __init__(self, digit):
+        self.digit = digit
+
+    def delay(self, msg: Message) -> Message:
+        return create_nametuple(Message,
+                                msg,
+                                number=(msg.number.digit(self.digit)))
+
+
+class DotProcessor(ProcessorDelay):
+    def delay(self, msg: Message) -> Message:
+        return create_nametuple(Message, msg, number=(msg.number.dot()))
 
 
 class NegativeProcessor(ProcessorDelay):
-    def __init__(self, arg=None):
-        pass
-
     def delay(self, msg: Message) -> Message:
-        return create_nametuple(Message, msg, number=(int(msg.number) * -1))
+        return create_nametuple(Message, msg, number=(msg.number * -1))

@@ -120,6 +120,22 @@ class TestProcessor(unittest.TestCase):
         proc = ProcessorTester(dev)
         proc.read()
 
+    def test_processor_digit(self):
+        RESULT = Message(barcode='FOO1234BAR',
+                         device='TEST',
+                         redis='test',
+                         name='test',
+                         number=42.0)
+        dev = DeviceTester(
+            ["SPRTCHCMD:DIGIT:4", "SPRTCHCMD:DIGIT:2", "FOO1234BAR"])
+        proc = ProcessorTester(dev)
+        proc.read()
+        self.assertEqual(proc.get_messages(), [RESULT])
+        # dev = DeviceTester(
+        #     ["SPRTCHCMD:NEGATIVE:0", "SPRTCHCMD:MULTIPLIER:4", "FOO1234BAR"])
+        # proc = ProcessorTester(dev)
+        # proc.read()
+
 
 if __name__ == '__main__':
     unittest.main()
