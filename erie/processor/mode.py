@@ -17,10 +17,8 @@ class ProcessorMode:
 class PrintModeProcessor(ProcessorMode):
     def execute(self, msg: Message):
         try:
-            print(msg._asdict())
             ipc_msg = ipc_create_print_message(
-                msg, number=float(msg.number),
-                origin=IpcOrigin.ERIE)._asdict()
+                msg, number=int(msg.number), origin=IpcOrigin.ERIE)._asdict()
             if redis_subscribers_num(r, msg.redis):
                 r.publish(msg.redis, json.dumps(ipc_msg))
             else:
