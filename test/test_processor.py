@@ -131,10 +131,89 @@ class TestProcessor(unittest.TestCase):
         proc = ProcessorTester(dev)
         proc.read()
         self.assertEqual(proc.get_messages(), [RESULT])
-        # dev = DeviceTester(
-        #     ["SPRTCHCMD:NEGATIVE:0", "SPRTCHCMD:MULTIPLIER:4", "FOO1234BAR"])
-        # proc = ProcessorTester(dev)
-        # proc.read()
+
+        dev = DeviceTester([
+            "SPRTCHCMD:DIGIT:0", "SPRTCHCMD:DIGIT:4", "SPRTCHCMD:DIGIT:2",
+            "FOO1234BAR"
+        ])
+        proc = ProcessorTester(dev)
+        proc.read()
+        msgs = proc.get_messages()
+        self.assertEqual(len(msgs), 1)
+        self.assertEqual(msgs[0].number, 42)
+
+        dev = DeviceTester([
+            "SPRTCHCMD:DIGIT:0", "SPRTCHCMD:DIGIT:4", "SPRTCHCMD:DIGIT:2",
+            "SPRTCHCMD:MULTIPLIER:2", "FOO1234BAR"
+        ])
+        proc = ProcessorTester(dev)
+        proc.read()
+        msgs = proc.get_messages()
+        self.assertEqual(len(msgs), 1)
+        self.assertEqual(msgs[0].number, 84)
+
+        dev = DeviceTester([
+            "SPRTCHCMD:DIGIT:0", "SPRTCHCMD:DIGIT:4", "SPRTCHCMD:MULTIPLIER:2",
+            "SPRTCHCMD:DIGIT:2", "FOO1234BAR"
+        ])
+        proc = ProcessorTester(dev)
+        proc.read()
+        msgs = proc.get_messages()
+        self.assertEqual(len(msgs), 1)
+        self.assertEqual(msgs[0].number, 82)
+
+    def test_processor_dotted(self):
+        RESULT = Message(barcode='FOO1234BAR',
+                         device='TEST',
+                         redis='test',
+                         name='test',
+                         number=4.2)
+        dev = DeviceTester([
+            "SPRTCHCMD:DIGIT:4", "SPRTCHCMD:DOTTED:0", "SPRTCHCMD:DIGIT:2",
+            "FOO1234BAR"
+        ])
+        proc = ProcessorTester(dev)
+        proc.read()
+        self.assertEqual(proc.get_messages(), [RESULT])
+
+        dev = DeviceTester(
+            ["SPRTCHCMD:DOTTED:0", "SPRTCHCMD:DIGIT:2", "FOO1234BAR"])
+        proc = ProcessorTester(dev)
+        proc.read()
+        msgs = proc.get_messages()
+        self.assertEqual(len(msgs), 1)
+        self.assertEqual(msgs[0].number, .2)
+
+        dev = DeviceTester([
+            "SPRTCHCMD:DOTTED:0", "SPRTCHCMD:DIGIT:2",
+            "SPRTCHCMD:MULTIPLIER:2", "FOO1234BAR"
+        ])
+        proc = ProcessorTester(dev)
+        proc.read()
+        msgs = proc.get_messages()
+        self.assertEqual(len(msgs), 1)
+        self.assertEqual(msgs[0].number, .4)
+
+        dev = DeviceTester([
+            "SPRTCHCMD:DOTTED:0", "SPRTCHCMD:DIGIT:2",
+            "SPRTCHCMD:MULTIPLIER:2", "SPRTCHCMD:DIGIT:2", "FOO1234BAR"
+        ])
+        proc = ProcessorTester(dev)
+        proc.read()
+        msgs = proc.get_messages()
+        self.assertEqual(len(msgs), 1)
+        self.assertEqual(msgs[0].number, .42)
+
+        dev = DeviceTester([
+            "SPRTCHCMD:DOTTED:0", "SPRTCHCMD:DIGIT:2",
+            "SPRTCHCMD:MULTIPLIER:2", "SPRTCHCMD:DIGIT:2",
+            "SPRTCHCMD:NEGATIVE:0", "FOO1234BAR"
+        ])
+        proc = ProcessorTester(dev)
+        proc.read()
+        msgs = proc.get_messages()
+        self.assertEqual(len(msgs), 1)
+        self.assertEqual(msgs[0].number, -0.42)
 
 
 if __name__ == '__main__':
