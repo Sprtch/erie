@@ -4,7 +4,7 @@ from typing import Optional
 
 class Quantity:
     def __init__(self, value=1.0, default=True, dotted=False, floating=None):
-        self.value: float = value
+        self.value: float = float(value)
         self.default: bool = default
         self.dotted: bool = dotted
         self.floating: int = floating
@@ -39,15 +39,31 @@ class Quantity:
             return Quantity(int(self), default=False, dotted=True)
 
     def __add__(self, other):
+        other = float(other.value)
         return self.value + other
 
     def __sub__(self, other):
+        other = float(other.value)
         return self.value - other
 
     def __mul__(self, other):
-        return self.value * other
+        other = float(other)
+        result = self.value * other
+        print(result, int(str(result).split(".")[-1]))
+        if int(str(result).split(".")[-1]):
+            dotted = True
+            floating = int(str(result).split('.')[-1])
+        else:
+            dotted = False
+            floating = None
+
+        return Quantity(result,
+                        default=False,
+                        dotted=dotted,
+                        floating=floating)
 
     def __div__(self, other):
+        other = float(other.value)
         return self.value / other
 
     def __eq__(self, other):
