@@ -51,7 +51,10 @@ class Quantity:
         return self.value / other
 
     def __eq__(self, other):
-        return self.value == other.value
+        if isinstance(other, Quantity):
+            return self.value == other.value
+        else:
+            return other == self.value
 
     def __int__(self):
         return int(self.value)
