@@ -1,5 +1,7 @@
 from despinassy import db
+import dataclasses
 
 
 def init_db(config={}):
-    db.init_app(config=config)
+    dict_config = dataclasses.asdict(config)
+    db.init_app(config=dict_config)

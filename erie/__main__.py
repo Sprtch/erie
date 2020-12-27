@@ -50,8 +50,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    conf = Config(args.config, debug=args.debuglevel)
-    init_db(conf.db)
+    conf = Config.from_yaml_file(args.config)
 
     loglevel = logger.DEBUG if args.debuglevel else logger.INFO
     if args.nodaemon:

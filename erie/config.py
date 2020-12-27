@@ -1,7 +1,8 @@
 from erie.devices.inputdevice import InputDeviceWrapper
 from erie.devices.serialdevice import SerialWrapper
 from erie.devices.stdindevice import StdinWrapper
-from erie.logger import logger
+from erie.db import init_db, db
+import dataclasses
 import os
 import yaml
 
@@ -10,49 +11,71 @@ class InvalidConfigFile(Exception):
     pass
 
 
+@dataclasses.dataclass
+class DbConfig:
+    uri: str = 'sqlite://'
+
+
+@dataclasses.dataclass
 class Config:
-    REDIS_DEFAULT_CHAN = "victoria"
+    APPNAME = "erie"
+    redis: str = "victoria"
+    devices: list = dataclasses.field(default_factory=list)
+    debug: bool = False
+    logfile: str = ""
+    pid: str = ""
 
-    def __init__(self, configpath, debug=False):
-        self.devices = []
-        self.db = None
-        if os.path.isfile(configpath):
-            raw = yaml.load(open(configpath, 'r'), Loader=yaml.FullLoader)
-        else:
-            raise InvalidConfigFile('No config file in "%s"' % (configpath))
-
-        self.db = raw.get('despinassy', {})
-
-        if raw.get('erie') is not None:
-            config = raw['erie']
-        else:
-            raise InvalidConfigFile("No 'erie' field in the config file.")
-
-        redis_default = config.get('redis', Config.REDIS_DEFAULT_CHAN)
-
-        devices = config.get('devices', [])
-
-        for dev in devices:
+    def __post_init__(self):
+        devices = []
+        for dev in self.devices:
             name, content = list(dev.items())[0]
             args = {
                 'name': name,
                 'path': content.get('path'),
                 'deviceid': content.get('id'),
-                'redis': content.get('redis', redis_default)
+                'redis': content.get('redis', self.redis)
             }
             devicetype = content.get('type')
             if devicetype == 'evdev':
-                self.devices.append(InputDeviceWrapper(**args))
+                devices.append(InputDeviceWrapper(**args))
             elif devicetype == 'serial':
-                self.devices.append(SerialWrapper(**args))
+                devices.append(SerialWrapper(**args))
             elif devicetype == 'stdin':
-                self.devices.append(StdinWrapper(**args))
+                devices.append(StdinWrapper(**args))
             else:
                 raise InvalidConfigFile("Type not supported")
 
-        if debug and not len(
+        if self.debug and not len(
                 list(
                     filter(lambda x: isinstance(x, StdinWrapper),
                            self.devices))):
-            self.devices.append(StdinWrapper(name="STDIN",
-                                             redis=redis_default))
+            devices.append(StdinWrapper(name="STDIN", redis=self.redis))
+
+        self.devices = devices
+
+    @staticmethod
+    def from_dict(raw):
+        if raw.get('despinassy') is not None:
+            dbconfig = DbConfig(**raw['despinassy'])
+            init_db(dbconfig)
+        else:
+            dbconfig = DbConfig()
+            init_db(dbconfig)
+            db.create_all()
+
+        if raw.get(Config.APPNAME) is not None:
+            config = raw[Config.APPNAME]
+        else:
+            raise InvalidConfigFile("No '%s' field in the config file." %
+                                    (Config.APPNAME))
+
+        return Config(**config)
+
+    @staticmethod
+    def from_yaml_file(filename):
+        if os.path.isfile(filename):
+            raw = yaml.load(open(filename, 'r'), Loader=yaml.FullLoader)
+        else:
+            raise InvalidConfigFile('No config file in "%s"' % (filename))
+
+        return Config.from_dict(raw)
