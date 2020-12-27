@@ -23,7 +23,8 @@ class Config:
     devices: list = dataclasses.field(default_factory=list)
     debug: bool = False
     logfile: str = ""
-    pid: str = ""
+    pidfile: str = ""
+    nodaemon: bool = False
 
     def __post_init__(self):
         devices = []
@@ -54,7 +55,9 @@ class Config:
         self.devices = devices
 
     @staticmethod
-    def from_dict(raw):
+    def from_dict(raw, **kwargs):
+        erie_args = {**kwargs, **raw['erie']}
+        raw['erie'] = erie_args
         if raw.get('despinassy') is not None:
             dbconfig = DbConfig(**raw['despinassy'])
             init_db(dbconfig)
@@ -72,10 +75,10 @@ class Config:
         return Config(**config)
 
     @staticmethod
-    def from_yaml_file(filename):
+    def from_yaml_file(filename, **kwargs):
         if os.path.isfile(filename):
             raw = yaml.load(open(filename, 'r'), Loader=yaml.FullLoader)
         else:
             raise InvalidConfigFile('No config file in "%s"' % (filename))
 
-        return Config.from_dict(raw)
+        return Config.from_dict(raw, **kwargs)

@@ -33,11 +33,11 @@ if __name__ == "__main__":
                         help='Log destination',
                         default=("/var/log/%s.log" % APPNAME))
     parser.add_argument('--debug',
-                        dest='debuglevel',
+                        dest='debug',
                         action='store_true',
                         help='Set the log level to show debug messages')
     parser.add_argument('--pid',
-                        dest='pid',
+                        dest='pidfile',
                         type=str,
                         help='Pid destination',
                         default=("/var/run/%s.pid" % APPNAME))
@@ -49,11 +49,13 @@ if __name__ == "__main__":
                         default=("./config.yaml"))
 
     args = parser.parse_args()
+    configfile = vars(args).pop('config')
+    arguments = vars(args)
 
-    conf = Config.from_yaml_file(args.config)
+    conf = Config.from_yaml_file(configfile, **arguments)
 
-    loglevel = logger.DEBUG if args.debuglevel else logger.INFO
-    if args.nodaemon:
+    loglevel = logger.DEBUG if conf.debug else logger.INFO
+    if conf.nodaemon:
         logger.basicConfig(format='[%(asctime)s] %(message)s',
                            datefmt='%m/%d/%Y %I:%M:%S %p',
                            level=loglevel)
@@ -63,7 +65,7 @@ if __name__ == "__main__":
         logger.setLevel(loglevel)
         logger.propagate = False
 
-        fh = logging.FileHandler(args.logfile, "w")
+        fh = logging.FileHandler(conf.logfile, "w")
         fh.setLevel(loglevel)
         formatter = logging.Formatter(fmt='[%(asctime)s] %(message)s',
                                       datefmt='%m/%d/%Y %I:%M:%S %p')
@@ -74,7 +76,7 @@ if __name__ == "__main__":
 
         daemon = Daemonize(app=APPNAME,
                            logger=logger,
-                           pid=args.pid,
+                           pid=conf.pidfile,
                            action=lambda: main(conf),
                            keep_fds=keep_fds)
         daemon.start()
