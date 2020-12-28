@@ -1,7 +1,9 @@
 from despinassy.ipc import create_nametuple
-from erie.logger import logger
 from erie.message import Message
+import logging
 import time
+
+logger = logging.getLogger(__name__)
 
 
 class DeviceWrapper:

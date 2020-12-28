@@ -1,12 +1,14 @@
 from despinassy import Part, Inventory, db
 from despinassy.ipc import create_nametuple, redis_subscribers_num, ipc_create_print_message, IpcOrigin
 from erie.message import Message
-from erie.logger import logger
 from redis import ConnectionError, Redis
+import logging
 import json
 
 r = Redis(host='localhost', port=6379, db=0)
 p = r.pubsub()
+
+logger = logging.getLogger(__name__)
 
 
 class ProcessorMode:

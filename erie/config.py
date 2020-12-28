@@ -2,6 +2,8 @@ from erie.devices.inputdevice import InputDeviceWrapper
 from erie.devices.serialdevice import SerialWrapper
 from erie.devices.stdindevice import StdinWrapper
 from erie.db import init_db, db
+from erie.logger import init_log
+from typing import Optional
 import dataclasses
 import os
 import yaml
@@ -22,11 +24,12 @@ class Config:
     redis: str = "victoria"
     devices: list = dataclasses.field(default_factory=list)
     debug: bool = False
-    logfile: str = ""
-    pidfile: str = ""
+    logfile: Optional[str] = None
+    pidfile: Optional[str] = None
     nodaemon: bool = False
 
     def __post_init__(self):
+        init_log(self)
         devices = []
         for dev in self.devices:
             name, content = list(dev.items())[0]

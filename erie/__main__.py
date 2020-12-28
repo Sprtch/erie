@@ -1,13 +1,10 @@
 from erie.config import Config
-from erie.logger import logger
 from erie.processor import Processor
 from erie.db import init_db
 from daemonize import Daemonize
 import logging
 import argparse
 import threading
-
-APPNAME = "erie"
 
 
 def main(conf):
@@ -31,7 +28,7 @@ if __name__ == "__main__":
                         dest='logfile',
                         type=str,
                         help='Log destination',
-                        default=("/var/log/%s.log" % APPNAME))
+                        default=None)
     parser.add_argument('--debug',
                         dest='debug',
                         action='store_true',
@@ -40,7 +37,7 @@ if __name__ == "__main__":
                         dest='pidfile',
                         type=str,
                         help='Pid destination',
-                        default=("/var/run/%s.pid" % APPNAME))
+                        default=("/var/run/%s.pid" % Config.APPNAME))
     parser.add_argument('-c',
                         '--config',
                         dest='config',
@@ -53,30 +50,16 @@ if __name__ == "__main__":
     arguments = vars(args)
 
     conf = Config.from_yaml_file(configfile, **arguments)
-
-    loglevel = logger.DEBUG if conf.debug else logger.INFO
     if conf.nodaemon:
-        logger.basicConfig(format='[%(asctime)s] %(message)s',
-                           datefmt='%m/%d/%Y %I:%M:%S %p',
-                           level=loglevel)
         main(conf)
     else:
-        logger = logger.getLogger(__name__)
-        logger.setLevel(loglevel)
-        logger.propagate = False
-
-        fh = logging.FileHandler(conf.logfile, "w")
-        fh.setLevel(loglevel)
-        formatter = logging.Formatter(fmt='[%(asctime)s] %(message)s',
-                                      datefmt='%m/%d/%Y %I:%M:%S %p')
-        fh.setFormatter(formatter)
-
-        logger.addHandler(fh)
-        keep_fds = [fh.stream.fileno()]
-
-        daemon = Daemonize(app=APPNAME,
+        logger = logging.getLogger(Config.APPNAME)
+        daemon = Daemonize(app=Config.APPNAME,
                            logger=logger,
                            pid=conf.pidfile,
                            action=lambda: main(conf),
-                           keep_fds=keep_fds)
+                           keep_fds=[
+                               i.stream.fileno() for i in logger.handlers
+                               if hasattr(i, 'baseFilename')
+                           ])
         daemon.start()
