@@ -17,16 +17,16 @@ class DeviceWrapper:
         return self.DEVICE_TYPE
 
     def debug(self, msg):
-        logger.debug("[%s:%s] %s" % (self._device_type, self.name, msg))
+        logger.debug("[%s:%s] %s" % (str(self.get_type()), self.name, msg))
 
     def info(self, msg):
-        logger.info("[%s:%s] %s" % (self._device_type, self.name, msg))
+        logger.info("[%s:%s] %s" % (str(self.get_type()), self.name, msg))
 
     def warning(self, msg):
-        logger.warning("[%s:%s] %s" % (self._device_type, self.name, msg))
+        logger.warning("[%s:%s] %s" % (str(self.get_type()), self.name, msg))
 
     def error(self, msg):
-        logger.error("[%s:%s] %s" % (self._device_type, self.name, msg))
+        logger.error("[%s:%s] %s" % (str(self.get_type()), self.name, msg))
 
     def export_config(self):
         raise NotImplementedError
