@@ -1,16 +1,20 @@
 from despinassy.ipc import create_nametuple
 from erie.message import Message
+from despinassy.Scanner import ScannerTypeEnum
+import dataclasses
 import logging
 import time
 
 logger = logging.getLogger(__name__)
 
 
+@dataclasses.dataclass
 class DeviceWrapper:
-    def __init__(self, devicetype, name, redis):
-        self._device_type = devicetype
-        self.name = name
-        self.redis = redis
+    name: str
+    redis: str
+
+    def get_type(self):
+        return self.DEVICE_TYPE
 
     def debug(self, msg):
         logger.debug("[%s:%s] %s" % (self._device_type, self.name, msg))
@@ -23,6 +27,9 @@ class DeviceWrapper:
 
     def error(self, msg):
         logger.error("[%s:%s] %s" % (self._device_type, self.name, msg))
+
+    def export_config(self):
+        raise NotImplementedError
 
     def present(self):
         raise NotImplementedError

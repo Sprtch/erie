@@ -1,20 +1,31 @@
 from erie.devices.device import DeviceWrapper
+from despinassy.Scanner import ScannerTypeEnum
+from typing import Optional
+import json
+import dataclasses
 import serial
 import os
 
-class SerialWrapper(DeviceWrapper):
-    def __init__(self, name, redis, path=None, deviceid=None):
-        super().__init__("SERIAL", name, redis)
 
-        if not (path or deviceid):
+@dataclasses.dataclass
+class SerialWrapper(DeviceWrapper):
+    DEVICE_TYPE: ScannerTypeEnum = ScannerTypeEnum.SERIAL
+    path: Optional[str] = None
+    deviceid: Optional[str] = None
+
+    def __post_init__(self):
+        if not (self.path or self.deviceid):
             self.error("Must specify a path or device id")
 
-        if deviceid:
-            self.path = "/dev/serial/by-id/%s" % (deviceid)
-        else:
-            self.path = path
-            
+        if self.deviceid:
+            self.path = "/dev/serial/by-id/%s" % (self.deviceid)
+
         self._dev = None
+
+    def export_config(self):
+        return json.dumps({
+            "path": self.path,
+        })
 
     def present(self):
         if os.path.exists(self.path):

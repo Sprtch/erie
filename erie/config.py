@@ -3,6 +3,7 @@ from erie.devices.serialdevice import SerialWrapper
 from erie.devices.stdindevice import StdinWrapper
 from erie.db import init_db, db
 from erie.logger import init_log
+from despinassy.Scanner import Scanner as ScannerTable
 from typing import Optional
 import dataclasses
 import os
@@ -33,18 +34,28 @@ class Config:
         devices = []
         for dev in self.devices:
             name, content = list(dev.items())[0]
-            args = {
-                'name': name,
-                'path': content.get('path'),
-                'deviceid': content.get('id'),
-                'redis': content.get('redis', self.redis)
-            }
             devicetype = content.get('type')
             if devicetype == 'evdev':
+                args = {
+                    'name': name,
+                    'path': content.get('path'),
+                    'deviceid': content.get('id'),
+                    'redis': content.get('redis', self.redis)
+                }
                 devices.append(InputDeviceWrapper(**args))
             elif devicetype == 'serial':
+                args = {
+                    'name': name,
+                    'path': content.get('path'),
+                    'deviceid': content.get('id'),
+                    'redis': content.get('redis', self.redis)
+                }
                 devices.append(SerialWrapper(**args))
             elif devicetype == 'stdin':
+                args = {
+                    'name': name,
+                    'redis': content.get('redis', self.redis)
+                }
                 devices.append(StdinWrapper(**args))
             else:
                 raise InvalidConfigFile("Type not supported")
@@ -56,6 +67,17 @@ class Config:
             devices.append(StdinWrapper(name="STDIN", redis=self.redis))
 
         self.devices = devices
+        self.save_scanners()
+
+    def save_scanners(self):
+        ScannerTable.query.delete()
+        for dev in self.devices:
+            d = ScannerTable(name=dev.name,
+                             type=dev.get_type(),
+                             redis=dev.redis,
+                             settings=dev.export_config())
+            db.session.add(d)
+        db.session.commit()
 
     @staticmethod
     def from_dict(raw, **kwargs):

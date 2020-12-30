@@ -1,8 +1,15 @@
 from erie.devices.device import DeviceWrapper
+from despinassy.Scanner import ScannerTypeEnum
+import json
+import dataclasses
 
+
+@dataclasses.dataclass
 class StdinWrapper(DeviceWrapper):
-    def __init__(self, name, redis, **kwargs):
-        super().__init__("STDIN", name, redis)
+    DEVICE_TYPE: ScannerTypeEnum = ScannerTypeEnum.STDIN
+
+    def export_config(self):
+        return json.dumps({})
 
     def present(self):
         return True
