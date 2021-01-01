@@ -18,4 +18,4 @@ class StdinWrapper(DeviceWrapper):
         while 1:
             line = input()
             if line:
-                yield line
+                yield line.upper()
