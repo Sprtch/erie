@@ -2,6 +2,14 @@ import dataclasses
 from typing import Optional
 
 
+class DevicePresentMessage:
+    pass
+
+
+class DeviceNotPresentMessage:
+    pass
+
+
 class Quantity:
     def __init__(self, value=1.0, default=True, dotted=False, floating=None):
         self.value: float = float(value)

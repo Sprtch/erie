@@ -1,6 +1,7 @@
+from erie.message import Message
 from despinassy import Part, Inventory, db
 from despinassy.ipc import create_nametuple, redis_subscribers_num, ipc_create_print_message, IpcOrigin
-from erie.message import Message
+from despinassy.Scanner import ScannerModeEnum
 from redis import ConnectionError, Redis
 import logging
 import json
@@ -12,11 +13,15 @@ logger = logging.getLogger(__name__)
 
 
 class ProcessorMode:
-    def process(self, msg: Message) -> Message:
+    MODE = ScannerModeEnum.UNDEFINED
+
+    def process(self, msg: Message):
         raise NotImplementedError
 
 
 class PrintModeProcessor(ProcessorMode):
+    MODE = ScannerModeEnum.PRINTMODE
+
     def execute(self, msg: Message):
         try:
             ipc_msg = ipc_create_print_message(
@@ -44,6 +49,8 @@ class PrintModeProcessor(ProcessorMode):
 
 
 class InventoryModeProcessor(ProcessorMode):
+    MODE = ScannerModeEnum.INVENTORYMODE
+
     def process(self, msg: Message):
         in_db = Part.query.filter(Part.barcode == msg.barcode).first()
         if in_db:
@@ -53,7 +60,7 @@ class InventoryModeProcessor(ProcessorMode):
                 i = in_db.inventories[0]
                 i.add(msg.number)
             else:
-                i = Inventory(part=in_db, quantity=msg.number)
+                i = Inventory(part=in_db, quantity=int(msg.number))
                 db.session.add(i)
             logger.info("[%s] '%s' added %i time to Inventory (now %i entry)" %
                         (msg.device, msg.barcode, msg.number, i.quantity))

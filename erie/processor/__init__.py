@@ -1,6 +1,8 @@
 from erie.processor.mode import ProcessorMode, PrintModeProcessor, InventoryModeProcessor
 from erie.processor.delay import ProcessorDelay, MultiplierProcessor, NegativeProcessor, DigitProcessor, DotProcessor
-from erie.message import Message
+from erie.message import Message, DevicePresentMessage, DeviceNotPresentMessage
+from despinassy import db
+from despinassy import Scanner as ScannerTable
 
 
 class Processor:
@@ -9,6 +11,19 @@ class Processor:
         self._mode = mode
         self._process_pipe = None
         self._reset_process_pipe()
+        self._entry = None
+
+    def save_scanner(self):
+        q = ScannerTable.query.filter(ScannerTable.name == self.dev.name)
+        if q.count():
+            self._entry = q.first()
+        else:
+            self._entry = ScannerTable(name=self.dev.name,
+                                       type=self.dev.get_type(),
+                                       redis=self.dev.redis,
+                                       settings=self.dev.export_config())
+            db.session.add(self._entry)
+            db.session.commit()
 
     def _reset_process_pipe(self):
         self._process_pipe = lambda x: x
@@ -23,12 +38,19 @@ class Processor:
 
     def store(self, proc: ProcessorMode):
         self._mode = proc
+        self._entry.mode = proc.MODE
+        db.session.commit()
         self._reset_process_pipe()
 
     def process(self, msg: Message):
-        result = self._mode.process(self._process_pipe(msg))
+        final_msg = self._process_pipe(msg)
+        self._mode.process(final_msg)
+        x = self._entry.add_transaction(mode=int(self._mode.MODE),
+                                        quantity=int(final_msg.number),
+                                        value=final_msg.barcode)
+        db.session.add(x)
+        db.session.commit()
         self._reset_process_pipe()
-        return result
 
     def match(self, msg: Message):
         if msg.barcode.startswith("SPRTCHCMD:") and len(
@@ -55,13 +77,21 @@ class Processor:
             return msg
 
     def read(self):
+        self.save_scanner()
         for msg in self.dev.read_loop():
-            mode = self.match(msg)
-            if isinstance(mode, Message):
-                self.process(mode)
-            elif isinstance(mode, ProcessorDelay):
-                self.delay(mode)
-            elif isinstance(mode, ProcessorMode):
-                self.store(mode)
-            elif callable(mode):
-                self.action(mode)
+            if isinstance(msg, Message):
+                mode = self.match(msg)
+                if isinstance(mode, ProcessorDelay):
+                    self.delay(mode)
+                elif isinstance(mode, ProcessorMode):
+                    self.store(mode)
+                elif callable(mode):
+                    self.action(mode)
+                else:
+                    self.process(mode)
+            elif isinstance(msg, DeviceNotPresentMessage):
+                self._entry.available = False
+                db.session.commit()
+            elif isinstance(msg, DevicePresentMessage):
+                self._entry.available = True
+                db.session.commit()

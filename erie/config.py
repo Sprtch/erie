@@ -67,17 +67,6 @@ class Config:
             devices.append(StdinWrapper(name="STDIN", redis=self.redis))
 
         self.devices = devices
-        self.save_scanners()
-
-    def save_scanners(self):
-        ScannerTable.query.delete()
-        for dev in self.devices:
-            d = ScannerTable(name=dev.name,
-                             type=dev.get_type(),
-                             redis=dev.redis,
-                             settings=dev.export_config())
-            db.session.add(d)
-        db.session.commit()
 
     @staticmethod
     def from_dict(raw, **kwargs):

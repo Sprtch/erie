@@ -1,5 +1,5 @@
 from despinassy.ipc import create_nametuple
-from erie.message import Message
+from erie.message import DevicePresentMessage, DeviceNotPresentMessage, Message
 from despinassy.Scanner import ScannerTypeEnum
 import dataclasses
 import logging
@@ -40,7 +40,9 @@ class DeviceWrapper:
     def read_loop(self):
         while True:
             if not self.present():
+                yield DeviceNotPresentMessage()
                 time.sleep(5)
-                continue
-            for x in self.retrieve():
-                yield Message(barcode=x, name=self.name, redis=self.redis)
+            else:
+                yield DevicePresentMessage()
+                for x in self.retrieve():
+                    yield Message(barcode=x, name=self.name, redis=self.redis)
