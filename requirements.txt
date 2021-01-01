@@ -1,4 +1,5 @@
 -e git+git://github.com/Sprtch/despinassy.git#egg=despinassy-pkg-tperale
+psycopg2
 pytest
 daemonize
 evdev==1.3.0

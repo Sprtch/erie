@@ -1,5 +1,5 @@
 despinassy:
-    uri: "sqlite:///../database.db"
+    uri: "postgresql://postgres@localhost/sprtch"
 
 erie:
     redis: "victoria"
