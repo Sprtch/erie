@@ -13,7 +13,7 @@ class TestDevice(unittest.TestCase):
                                         lambda: 'helloworld'):
             gen = device.retrieve()
             output = next(gen)
-            self.assertEqual(output, 'helloworld')
+            self.assertEqual(output, 'HELLOWORLD')
 
 
 if __name__ == '__main__':

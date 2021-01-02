@@ -12,6 +12,9 @@ class DeviceTester(DeviceWrapper):
     DEVICE_TYPE: ScannerTypeEnum = ScannerTypeEnum.TEST
     input_list: list = dataclasses.field(default_factory=list)
 
+    def export_config(self):
+        return "{}"
+
     def retrieve(self):
         for msg in self.input_list:
             yield msg
@@ -64,7 +67,7 @@ class TestProcessor(unittest.TestCase):
         proc.read()
         self.assertEqual(proc.get_messages(), [RESULT])
 
-    def test_proessor_multiplier(self):
+    def test_processor_multiplier(self):
         RESULT = Message(barcode='FOO1234BAR',
                          device='ScannerTypeEnum.TEST',
                          redis='test',
