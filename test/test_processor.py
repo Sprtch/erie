@@ -110,6 +110,7 @@ class TestProcessor(unittest.TestCase):
         self.assertEqual(s.type, dev.get_type())
         self.assertEqual(s.name, dev.name)
         self.assertEqual(s.settings, dev.export_config())
+        self.assertEqual(ScannerTransaction.query.count(), 1)
 
         RESULT = Message(barcode='FOO1234BAR',
                          device='ScannerTypeEnum.TEST',
@@ -122,6 +123,9 @@ class TestProcessor(unittest.TestCase):
         proc = ProcessorTester(dev)
         proc.read()
         self.assertEqual(proc.get_messages(), [RESULT])
+
+        self.assertEqual(ScannerTable.query.count(), 1)
+        self.assertEqual(ScannerTransaction.query.count(), 2)
 
         RESULT = Message(barcode='FOO1234BAR',
                          device='ScannerTypeEnum.TEST',
@@ -137,6 +141,9 @@ class TestProcessor(unittest.TestCase):
         proc = ProcessorTester(dev)
         proc.read()
         self.assertEqual(proc.get_messages(), [RESULT])
+
+        self.assertEqual(ScannerTable.query.count(), 1)
+        self.assertEqual(ScannerTransaction.query.count(), 3)
 
     def test_processor_clear(self):
         RESULT = Message(barcode='FOO1234BAR',
@@ -155,6 +162,9 @@ class TestProcessor(unittest.TestCase):
         proc.read()
         self.assertEqual(proc.get_messages(), [RESULT])
 
+        self.assertEqual(ScannerTable.query.count(), 1)
+        self.assertEqual(ScannerTransaction.query.count(), 1)
+
     def test_processor_negative(self):
         RESULT = Message(barcode='FOO1234BAR',
                          device='ScannerTypeEnum.TEST',
@@ -170,6 +180,10 @@ class TestProcessor(unittest.TestCase):
         proc = ProcessorTester(dev)
         proc.read()
         self.assertEqual(proc.get_messages(), [RESULT])
+
+        self.assertEqual(ScannerTable.query.count(), 1)
+        self.assertEqual(ScannerTransaction.query.count(), 1)
+
         dev = DeviceTester(name="test",
                            redis="test",
                            input_list=[
@@ -178,6 +192,9 @@ class TestProcessor(unittest.TestCase):
                            ])
         proc = ProcessorTester(dev)
         proc.read()
+
+        self.assertEqual(ScannerTable.query.count(), 1)
+        self.assertEqual(ScannerTransaction.query.count(), 2)
 
     def test_processor_digit(self):
         RESULT = Message(barcode='FOO1234BAR',
@@ -195,6 +212,9 @@ class TestProcessor(unittest.TestCase):
         proc.read()
         self.assertEqual(proc.get_messages(), [RESULT])
 
+        self.assertEqual(ScannerTable.query.count(), 1)
+        self.assertEqual(ScannerTransaction.query.count(), 1)
+
         dev = DeviceTester(name="test",
                            redis="test",
                            input_list=[
@@ -206,6 +226,9 @@ class TestProcessor(unittest.TestCase):
         msgs = proc.get_messages()
         self.assertEqual(len(msgs), 1)
         self.assertEqual(msgs[0].number, 42)
+
+        self.assertEqual(ScannerTable.query.count(), 1)
+        self.assertEqual(ScannerTransaction.query.count(), 2)
 
         dev = DeviceTester(name="test",
                            redis="test",
@@ -220,6 +243,9 @@ class TestProcessor(unittest.TestCase):
         self.assertEqual(len(msgs), 1)
         self.assertEqual(msgs[0].number, 84)
 
+        self.assertEqual(ScannerTable.query.count(), 1)
+        self.assertEqual(ScannerTransaction.query.count(), 3)
+
         dev = DeviceTester(name="test",
                            redis="test",
                            input_list=[
@@ -232,6 +258,9 @@ class TestProcessor(unittest.TestCase):
         msgs = proc.get_messages()
         self.assertEqual(len(msgs), 1)
         self.assertEqual(msgs[0].number, 82)
+
+        self.assertEqual(ScannerTable.query.count(), 1)
+        self.assertEqual(ScannerTransaction.query.count(), 4)
 
     def test_processor_dotted(self):
         RESULT = Message(barcode='FOO1234BAR',
@@ -249,6 +278,9 @@ class TestProcessor(unittest.TestCase):
         proc.read()
         self.assertEqual(proc.get_messages(), [RESULT])
 
+        self.assertEqual(ScannerTable.query.count(), 1)
+        self.assertEqual(ScannerTransaction.query.count(), 1)
+
         dev = DeviceTester(name="test",
                            redis="test",
                            input_list=[
@@ -261,6 +293,9 @@ class TestProcessor(unittest.TestCase):
         self.assertEqual(len(msgs), 1)
         self.assertEqual(msgs[0].number, .2)
 
+        self.assertEqual(ScannerTable.query.count(), 1)
+        self.assertEqual(ScannerTransaction.query.count(), 2)
+
         dev = DeviceTester(name="test",
                            redis="test",
                            input_list=[
@@ -272,6 +307,9 @@ class TestProcessor(unittest.TestCase):
         msgs = proc.get_messages()
         self.assertEqual(len(msgs), 1)
         self.assertEqual(msgs[0].number, .4)
+
+        self.assertEqual(ScannerTable.query.count(), 1)
+        self.assertEqual(ScannerTransaction.query.count(), 3)
 
         dev = DeviceTester(name="test",
                            redis="test",
@@ -286,6 +324,9 @@ class TestProcessor(unittest.TestCase):
         self.assertEqual(len(msgs), 1)
         self.assertEqual(msgs[0].number, .42)
 
+        self.assertEqual(ScannerTable.query.count(), 1)
+        self.assertEqual(ScannerTransaction.query.count(), 4)
+
         dev = DeviceTester(name="test",
                            redis="test",
                            input_list=[
@@ -298,6 +339,9 @@ class TestProcessor(unittest.TestCase):
         msgs = proc.get_messages()
         self.assertEqual(len(msgs), 1)
         self.assertEqual(msgs[0].number, -0.42)
+
+        self.assertEqual(ScannerTable.query.count(), 1)
+        self.assertEqual(ScannerTransaction.query.count(), 5)
 
 
 if __name__ == '__main__':
