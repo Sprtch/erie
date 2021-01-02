@@ -1,5 +1,6 @@
 import unittest
-from despinassy.Scanner import ScannerTypeEnum
+from despinassy import db
+from despinassy.Scanner import ScannerTypeEnum, Scanner as ScannerTable, ScannerTransaction
 from despinassy.ipc import create_nametuple
 from erie.message import Message
 from erie.devices.device import DeviceWrapper
@@ -33,9 +34,8 @@ class ProcessorTester(Processor):
         super().__init__(dev)
         self._msgs = []
 
-    def process(self, msg):
-        self._msgs.append(self._process_pipe(msg))
-        self._reset_process_pipe()
+    def _process_dispatch(self, msg):
+        self._msgs.append(msg)
 
     def clear(self):
         self._msgs = []
@@ -45,6 +45,22 @@ class ProcessorTester(Processor):
 
 
 class TestProcessor(unittest.TestCase):
+    @classmethod
+    def setUpClass(self):
+        db.init_app(config={
+            'uri': 'sqlite://',
+        })
+        db.drop_all()
+        db.create_all()
+
+    @classmethod
+    def tearDownClass(self):
+        db.drop_all()
+
+    def tearDown(self):
+        ScannerTable.query.delete()
+        ScannerTransaction.query.delete()
+
     def test_processor_none(self):
         dev = DeviceTester(
             name="test",
@@ -67,6 +83,14 @@ class TestProcessor(unittest.TestCase):
         proc.read()
         self.assertEqual(proc.get_messages(), [RESULT])
 
+        self.assertEqual(ScannerTable.query.count(), 1)
+        s = ScannerTable.query.get(1)
+        self.assertIsNotNone(s)
+        self.assertEqual(s.type, dev.get_type())
+        self.assertEqual(s.name, dev.name)
+        self.assertEqual(s.settings, dev.export_config())
+        self.assertEqual(ScannerTransaction.query.count(), 1)
+
     def test_processor_multiplier(self):
         RESULT = Message(barcode='FOO1234BAR',
                          device='ScannerTypeEnum.TEST',
@@ -79,6 +103,13 @@ class TestProcessor(unittest.TestCase):
         proc = ProcessorTester(dev)
         proc.read()
         self.assertEqual(proc.get_messages(), [RESULT])
+
+        self.assertEqual(ScannerTable.query.count(), 1)
+        s = ScannerTable.query.get(1)
+        self.assertIsNotNone(s)
+        self.assertEqual(s.type, dev.get_type())
+        self.assertEqual(s.name, dev.name)
+        self.assertEqual(s.settings, dev.export_config())
 
         RESULT = Message(barcode='FOO1234BAR',
                          device='ScannerTypeEnum.TEST',

@@ -1,6 +1,5 @@
 from erie.config import Config
 from erie.devices.stdindevice import StdinWrapper
-from despinassy.Scanner import Scanner as ScannerTable
 import unittest
 
 

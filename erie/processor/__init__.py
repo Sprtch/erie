@@ -42,9 +42,12 @@ class Processor:
         db.session.commit()
         self._reset_process_pipe()
 
+    def _process_dispatch(self, msg: Message):
+        self._mode.process(msg)
+
     def process(self, msg: Message):
         final_msg = self._process_pipe(msg)
-        self._mode.process(final_msg)
+        self._process_dispatch(final_msg)
         x = self._entry.add_transaction(mode=int(self._mode.MODE),
                                         quantity=int(final_msg.number),
                                         value=final_msg.barcode)
