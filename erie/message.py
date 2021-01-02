@@ -57,7 +57,6 @@ class Quantity:
     def __mul__(self, other):
         other = float(other)
         result = self.value * other
-        print(result, int(str(result).split(".")[-1]))
         if int(str(result).split(".")[-1]):
             dotted = True
             floating = int(str(result).split('.')[-1])
