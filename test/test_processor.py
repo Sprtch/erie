@@ -24,8 +24,7 @@ class DeviceTester(DeviceWrapper):
         for x in self.retrieve():
             yield create_nametuple(Message, {},
                                    barcode=x,
-                                   device=str(self.DEVICE_TYPE),
-                                   name=self.name,
+                                   device=self.name,
                                    redis=self.redis)
 
 
@@ -72,9 +71,8 @@ class TestProcessor(unittest.TestCase):
 
     def test_processor_barcode(self):
         RESULT = Message(barcode='FOO1234BAR',
-                         device='ScannerTypeEnum.TEST',
                          redis='test',
-                         name='test',
+                         device='test',
                          number=1)
         dev = DeviceTester(name="test",
                            redis="test",
@@ -93,9 +91,8 @@ class TestProcessor(unittest.TestCase):
 
     def test_processor_multiplier(self):
         RESULT = Message(barcode='FOO1234BAR',
-                         device='ScannerTypeEnum.TEST',
                          redis='test',
-                         name='test',
+                         device='test',
                          number=2)
         dev = DeviceTester(name="test",
                            redis="test",
@@ -113,9 +110,8 @@ class TestProcessor(unittest.TestCase):
         self.assertEqual(ScannerTransaction.query.count(), 1)
 
         RESULT = Message(barcode='FOO1234BAR',
-                         device='ScannerTypeEnum.TEST',
                          redis='test',
-                         name='test',
+                         device='test',
                          number=4)
         dev = DeviceTester(name="test",
                            redis="test",
@@ -128,9 +124,8 @@ class TestProcessor(unittest.TestCase):
         self.assertEqual(ScannerTransaction.query.count(), 2)
 
         RESULT = Message(barcode='FOO1234BAR',
-                         device='ScannerTypeEnum.TEST',
                          redis='test',
-                         name='test',
+                         device='test',
                          number=8)
         dev = DeviceTester(name="test",
                            redis="test",
@@ -147,9 +142,8 @@ class TestProcessor(unittest.TestCase):
 
     def test_processor_clear(self):
         RESULT = Message(barcode='FOO1234BAR',
-                         device='ScannerTypeEnum.TEST',
                          redis='test',
-                         name='test',
+                         device='test',
                          number=1)
         dev = DeviceTester(name="test",
                            redis="test",
@@ -167,9 +161,8 @@ class TestProcessor(unittest.TestCase):
 
     def test_processor_negative(self):
         RESULT = Message(barcode='FOO1234BAR',
-                         device='ScannerTypeEnum.TEST',
                          redis='test',
-                         name='test',
+                         device='test',
                          number=-4)
         dev = DeviceTester(name="test",
                            redis="test",
@@ -198,9 +191,8 @@ class TestProcessor(unittest.TestCase):
 
     def test_processor_digit(self):
         RESULT = Message(barcode='FOO1234BAR',
-                         device='ScannerTypeEnum.TEST',
                          redis='test',
-                         name='test',
+                         device='test',
                          number=42.0)
         dev = DeviceTester(name="test",
                            redis="test",
@@ -264,9 +256,8 @@ class TestProcessor(unittest.TestCase):
 
     def test_processor_dotted(self):
         RESULT = Message(barcode='FOO1234BAR',
-                         device='ScannerTypeEnum.TEST',
                          redis='test',
-                         name='test',
+                         device='test',
                          number=4.2)
         dev = DeviceTester(name="test",
                            redis="test",
