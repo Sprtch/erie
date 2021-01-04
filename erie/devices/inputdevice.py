@@ -21,6 +21,7 @@ class InputDeviceWrapper(DeviceWrapper):
         'LEFTSHIFT': '',
         'SEMICOLON': ':',
         'SLASH': '/',
+        'MINUS': '-',
     }
 
     def __post_init__(self):
