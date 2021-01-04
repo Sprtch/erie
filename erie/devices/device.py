@@ -45,4 +45,6 @@ class DeviceWrapper:
             else:
                 yield DevicePresentMessage()
                 for x in self.retrieve():
-                    yield Message(barcode=x, name=self.name, redis=self.redis)
+                    yield Message(barcode=x,
+                                  device=self.name,
+                                  redis=self.redis)

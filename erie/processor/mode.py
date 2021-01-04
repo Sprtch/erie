@@ -22,10 +22,22 @@ class ProcessorMode:
 class PrintModeProcessor(ProcessorMode):
     MODE = ScannerModeEnum.PRINTMODE
 
-    def execute(self, msg: Message):
+    def process(self, msg: Message):
+        in_db = Part.query.filter(Part.barcode == msg.barcode).first()
+        name = ''
+        if in_db:
+            name = in_db.name
+            logger.info("[%s] Scanned '%s' and found '%s'" %
+                        (msg.device, msg.barcode, name))
+        else:
+            name = msg.barcode
+            logger.info("[%s] Scanned '%s'" % (msg.device, msg.barcode))
+
         try:
-            ipc_msg = ipc_create_print_message(
-                msg, number=int(msg.number), origin=IpcOrigin.ERIE)._asdict()
+            ipc_msg = ipc_create_print_message(msg,
+                                               number=int(msg.number),
+                                               origin=IpcOrigin.ERIE,
+                                               name=name)._asdict()
             if redis_subscribers_num(r, msg.redis):
                 r.publish(msg.redis, json.dumps(ipc_msg))
             else:
@@ -34,18 +46,6 @@ class PrintModeProcessor(ProcessorMode):
                     % (msg.device, msg.redis, json.dumps(ipc_msg)))
         except ConnectionError as e:
             logger.error(e)
-
-    def process(self, msg: Message):
-        in_db = Part.query.filter(Part.barcode == msg.barcode).first()
-        if in_db:
-            msg = create_nametuple(Message, msg._asdict(), name=in_db.name)
-            logger.info("[%s] Scanned '%s' and found '%s'" %
-                        (msg.device, msg.barcode, msg.name))
-        else:
-            msg = create_nametuple(Message, msg._asdict(), name='')
-            logger.info("[%s] Scanned '%s'" % (msg.device, msg.barcode))
-
-        self.execute(msg)
 
 
 class InventoryModeProcessor(ProcessorMode):

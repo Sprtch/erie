@@ -95,7 +95,6 @@ class Quantity:
 @dataclasses.dataclass
 class Message:
     barcode: str
-    name: str
     redis: str
     device: Optional[str] = None
     number: Quantity = Quantity(1)
