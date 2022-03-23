@@ -32,6 +32,7 @@ class ProcessorTester(Processor):
     def __init__(self, dev):
         super().__init__(dev)
         self._msgs = []
+        self.initialize()
 
     def _process_dispatch(self, msg):
         self._msgs.append(msg)

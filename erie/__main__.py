@@ -1,16 +1,29 @@
 from erie.config import Config
 from erie.processor import Processor
-from erie.db import init_db
-from daemonize import Daemonize
+from erie.db import init_db, db
+import sys
+import signal
+from lockfile import FileLock
+import daemon
 import logging
 import argparse
 import threading
 
 
+def program_cleanup(signal, frame):
+    logger.info("Terminating the program from signal (%i)" % (signal))
+    # PrinterTable.query.update(dict(hidden=True, available=False))
+    db.session.commit()
+    exit()
+
 def main(conf):
     thrlist = []
+    init_db(conf.database)
+
     for dev in conf.devices:
-        t = threading.Thread(target=Processor(dev).read)
+        proc = Processor(dev)
+        proc.initialize()
+        t = threading.Thread(target=proc.read)
         t.start()
         thrlist.append(t)
 
@@ -37,7 +50,7 @@ if __name__ == "__main__":
                         dest='pidfile',
                         type=str,
                         help='Pid destination',
-                        default=("/var/run/%s.pid" % Config.APPNAME))
+                        default=None)
     parser.add_argument('-c',
                         '--config',
                         dest='config',
@@ -50,16 +63,19 @@ if __name__ == "__main__":
     arguments = vars(args)
 
     conf = Config.from_yaml_file(configfile, **arguments)
-    if conf.nodaemon:
+ 
+    logger = logging.getLogger(Config.APPNAME)
+    ctx = daemon.DaemonContext(
+            pidfile=FileLock(conf.pidfile) if conf.pidfile else None,
+            files_preserve=[i.stream for i in logger.handlers if hasattr(i, 'baseFilename')],
+            detach_process=not args.nodaemon,
+            stdout=sys.stdout,
+            stderr=sys.stderr,
+            signal_map={
+                signal.SIGTERM: program_cleanup,
+                signal.SIGINT: program_cleanup,
+            })
+    # TODO error and stdout to file ?
+
+    with ctx:
         main(conf)
-    else:
-        logger = logging.getLogger(Config.APPNAME)
-        daemon = Daemonize(app=Config.APPNAME,
-                           logger=logger,
-                           pid=conf.pidfile,
-                           action=lambda: main(conf),
-                           keep_fds=[
-                               i.stream.fileno() for i in logger.handlers
-                               if hasattr(i, 'baseFilename')
-                           ])
-        daemon.start()
