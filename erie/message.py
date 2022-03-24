@@ -11,6 +11,11 @@ class DeviceNotPresentMessage:
 
 
 class Quantity:
+    """
+    Class to represent a quantity in a message and help with the construction
+    of 'delayed' quantity or creating number with the help of a barcode
+    scanner.
+    """
     def __init__(self, value=1.0, default=True, dotted=False, floating=None):
         self.value: float = float(value)
         self.default: bool = default
@@ -94,6 +99,15 @@ class Quantity:
 
 @dataclasses.dataclass
 class Message:
+    """
+    The content of a message read from a device.
+    This class abstract and help to maintain data integrety of the content
+    shared between a device and its processor.
+
+    :note: This message only abstract what it shared inside this program and do
+        not represent the actual form of what is sent through the other program
+        through redis.
+    """
     barcode: str
     redis: str
     device: Optional[str] = None

@@ -18,6 +18,9 @@ class MultiplierProcessor(ProcessorDelay):
 
 
 class DigitProcessor(ProcessorDelay):
+    """
+    The `DigitProcessor` enter manually a digit to create a number from it.
+    """
     def __init__(self, digit):
         self.digit = digit
 
@@ -28,10 +31,24 @@ class DigitProcessor(ProcessorDelay):
 
 
 class DotProcessor(ProcessorDelay):
+    """
+    The `DotProcessor` turns the quantity of the current message into a
+    floating number. This processor must be used in conjunction of the
+    `DigitProcessor` functions to create a particular floating number.
+
+    :note: Floating numbers are useful in inventory mode
+    """
     def delay(self, msg: Message) -> Message:
         return create_nametuple(Message, msg, number=(msg.number.dot()))
 
 
 class NegativeProcessor(ProcessorDelay):
+    """
+    The `NegativeProcessor` turns the quantity of the current message into a
+    negative number.
+
+    :note: Negative numbers are useful in inventory mode as it will remove
+        something from the inventory instead of adding it.
+    """
     def delay(self, msg: Message) -> Message:
         return create_nametuple(Message, msg, number=(msg.number * -1))

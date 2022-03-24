@@ -7,16 +7,39 @@ from despinassy import Scanner as ScannerTable
 
 class Processor:
     """
-    """
+    The `Processor` class act as a super class to handle messages from reading devices.
 
+    This class is used as a super-class of a specialized
+    :class`erie.devices.device.DeviceWrapper` to store its current state. The processor 
+    serve to interpret the incoming stream of string read by a physical or virtual device.
+    The attached device can read barcode as well as operation that can be interpreted to modify
+    the operating mode of the reading device like:
+        - Changing the mode between 'printing' or 'inventory' mode
+        - Applying multiplier to lunch multiple print jobs
+    """
     def __init__(self, dev, mode=PrintModeProcessor()):
         self.dev = dev
+        """Attached reading device to this processor"""
+
         self._mode = mode
+        """Internal current mode of execution of the attached reading device (scanner, ...)"""
+
         self._process_pipe = None
-        self._reset_process_pipe()
+        """Internal pipe to delay the execution of operation on the next normal message (not an operation)"""
+
         self._entry = None
+        """Internal reference to a database object representing the attached device to ease its access"""
+
+        self._reset_process_pipe()
+
 
     def save_scanner(self):
+        """
+        Save the attached reading device (scanner) to the database so it's available for the
+        other programs using the database.
+
+        :ref :class`despinassy.Scanner`
+        """
         q = ScannerTable.query.filter(ScannerTable.name == self.dev.name)
         if q.count():
             self._entry = q.first()
@@ -29,17 +52,39 @@ class Processor:
             db.session.commit()
 
     def _reset_process_pipe(self):
+        """
+        Reset the pipe of delayed function to not apply anything on the next normal message.
+        """
         self._process_pipe = lambda x: x
 
     def action(self, fun):
+        """
+        Direct action that will be called directly as they are scanned.
+        """
         fun()
         self._reset_process_pipe()
 
     def delay(self, proc: ProcessorDelay):
+        """
+        Add a new function to the `_process_pipe`. This function and all the previous function
+        of the pipe will be used when a normal message is read by the attached device.
+
+        :arg proc: Object containing a `delay` method that contain the action that need to be applied
+            to the next message.
+
+        :ref :class`erie.processor.delay.ProcessorDelay`
+        """
         pipe = self._process_pipe
         self._process_pipe = lambda x: proc.delay(pipe(x))
 
     def store(self, proc: ProcessorMode):
+        """
+        Function to change the current mode of the processor for the attached device and log it
+        to the database.
+
+        :note: Changing  a mode will reset the process pipe.
+        :ref :class`erie.processor.delay.ProcessorMode`
+        """
         self._mode = proc
         self._entry.mode = proc.MODE
         db.session.commit()
@@ -49,6 +94,13 @@ class Processor:
         self._mode.process(msg)
 
     def process(self, msg: Message):
+        """
+        Process a message (not a function message) and apply the process pipe
+        to it and the pass it to the current mode.
+        Depending on the mode the message will have a different behaviour.
+
+        :arg msg: Message coming from an attached device.
+        """
         final_msg = self._process_pipe(msg)
         self._process_dispatch(final_msg)
         x = self._entry.add_transaction(mode=int(self._mode.MODE),
@@ -59,6 +111,12 @@ class Processor:
         self._reset_process_pipe()
 
     def match(self, msg: Message):
+        """
+        Parse the content of a message read by an attached device to match it
+        with the code it needs to execute.
+
+        :arg msg: Message coming from an attached device.
+        """
         if msg.barcode.startswith("SPRTCHCMD:") and len(
                 msg.barcode.split(":")) == 3:
             _, processor, argument = msg.barcode.split(":")
@@ -83,6 +141,13 @@ class Processor:
             return msg
 
     def read(self):
+        """Busy loop reading forever on the incoming messages of the attached device.
+
+        Run a loop intercepting the incoming messages of the attached device to this processor
+        and process them to execute the right operation depending on the message content.
+
+        :note This function is blocking and must be run inside a thread.
+        """
         self.save_scanner()
 
         for msg in self.dev.read_loop():
