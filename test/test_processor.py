@@ -32,7 +32,6 @@ class ProcessorTester(Processor):
     def __init__(self, dev):
         super().__init__(dev)
         self._msgs = []
-        self.initialize()
 
     def _process_dispatch(self, msg):
         self._msgs.append(msg)
@@ -52,14 +51,16 @@ class TestProcessor(unittest.TestCase):
         })
         db.drop_all()
         db.create_all()
+        ScannerTransaction.query.delete()
+        ScannerTable.query.delete()
 
     @classmethod
     def tearDownClass(self):
         db.drop_all()
 
     def tearDown(self):
-        ScannerTable.query.delete()
         ScannerTransaction.query.delete()
+        ScannerTable.query.delete()
 
     def test_processor_none(self):
         dev = DeviceTester(
@@ -81,9 +82,8 @@ class TestProcessor(unittest.TestCase):
         proc = ProcessorTester(dev)
         proc.read()
         self.assertEqual(proc.get_messages(), [RESULT])
-
         self.assertEqual(ScannerTable.query.count(), 1)
-        s = ScannerTable.query.get(1)
+        s = ScannerTable.query.get(1) # First is default 'huron' scanner
         self.assertIsNotNone(s)
         self.assertEqual(s.type, dev.get_type())
         self.assertEqual(s.name, dev.name)

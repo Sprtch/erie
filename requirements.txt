@@ -2,7 +2,7 @@
 psycopg2
 pytest
 python-daemon
-evdev==1.4.0
+evdev==1.5.0
 redis
 pyserial
 PyYAML

@@ -16,9 +16,6 @@ class Processor:
         self._reset_process_pipe()
         self._entry = None
 
-    def initialize(self):
-        self.save_scanner()
-
     def save_scanner(self):
         q = ScannerTable.query.filter(ScannerTable.name == self.dev.name)
         if q.count():
@@ -86,6 +83,8 @@ class Processor:
             return msg
 
     def read(self):
+        self.save_scanner()
+
         for msg in self.dev.read_loop():
             if isinstance(msg, Message):
                 mode = self.match(msg)

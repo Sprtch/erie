@@ -22,7 +22,6 @@ def main(conf):
 
     for dev in conf.devices:
         proc = Processor(dev)
-        proc.initialize()
         t = threading.Thread(target=proc.read)
         t.start()
         thrlist.append(t)
@@ -69,6 +68,7 @@ if __name__ == "__main__":
             pidfile=FileLock(conf.pidfile) if conf.pidfile else None,
             files_preserve=[i.stream for i in logger.handlers if hasattr(i, 'baseFilename')],
             detach_process=not args.nodaemon,
+            stdin=sys.stdin,
             stdout=sys.stdout,
             stderr=sys.stderr,
             signal_map={
