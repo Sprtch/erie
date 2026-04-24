@@ -1,15 +1,18 @@
-from erie.devices.device import DeviceWrapper
+from erie.reader.base import Reader
 from despinassy.Scanner import ScannerTypeEnum
-from evdev import InputDevice, categorize
-from evdev.ecodes import EV_KEY, KEY
 from typing import Optional
-import json
+from evdev.ecodes import EV_KEY, KEY
+import evdev
+import logging
 import dataclasses
 import os
 
+logger = logging.getLogger(__name__)
 
 @dataclasses.dataclass
-class InputDeviceWrapper(DeviceWrapper):
+class Evdev(Reader):
+    """
+    """
     DEVICE_TYPE: ScannerTypeEnum = ScannerTypeEnum.EVDEV
     path: Optional[str] = None
     deviceid: Optional[str] = None
@@ -28,29 +31,33 @@ class InputDeviceWrapper(DeviceWrapper):
 
     def __post_init__(self):
         if not (self.path or self.deviceid):
-            self.error("Must specify a path or device id")
+            logger.error("Must specify a path or device id")
 
         if self.deviceid:
             self.path = "/dev/input/by-id/%s" % (self.deviceid)
 
         self._dev = None
 
-    def export_config(self):
-        return json.dumps({
-            "path": self.path,
-        })
+    @property
+    def type(self):
+        return ScannerTypeEnum.EVDEV
+
+    # def export_config(self):
+    #     return json.dumps({
+    #         "path": self.path,
+    #     })
 
     def present(self):
         if os.path.exists(self.path):
-            self.info("Barcode scanner found")
-            self._dev = InputDevice(self.path)
+            logger.info("Barcode scanner found")
+            self._dev = evdev.InputDevice(self.path)
             self._dev.grab()
         elif self._dev:
             self._dev.ungrab()  # Test this case
             self._dev = None
-            self.warning("Barcode disconnected")
+            logger.warning("Barcode disconnected")
         else:
-            self.debug("Still no barcode scanner plugged")
+            logger.debug("Still no barcode scanner plugged")
 
         return self._dev is not None
 
@@ -59,11 +66,11 @@ class InputDeviceWrapper(DeviceWrapper):
         try:
             for ev in self._dev.read_loop():
                 if ev.type == EV_KEY:
-                    data = categorize(ev)
+                    data = evdev.categorize(ev)
                     if (data.keystate == 0):
                         # Remove the "KEY_" default character of ecode to only get the key
                         key = KEY[data.scancode][4:]
-                        key = InputDeviceWrapper.KEYBOARD_TRANSLATE.get(
+                        key = InputDevice.KEYBOARD_TRANSLATE.get(
                             key, key)
                         if (key is None and barcode) or key == 'ENTER':
                             yield barcode
@@ -71,4 +78,4 @@ class InputDeviceWrapper(DeviceWrapper):
                         elif len(key):
                             barcode += str(key)
         except OSError:
-            self.warning("Barcode scanner just disconnected")
+            logger.warning("Barcode scanner just disconnected")

@@ -1,15 +1,19 @@
-from erie.devices.device import DeviceWrapper
+from erie.reader.base import Reader
 from despinassy.Scanner import ScannerTypeEnum
-import json
+import logging
 import dataclasses
+
+logger = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass
-class StdinWrapper(DeviceWrapper):
-    DEVICE_TYPE: ScannerTypeEnum = ScannerTypeEnum.STDIN
+class Stdin(Reader):
+    # def export_config(self):
+    #     return json.dumps({})
 
-    def export_config(self):
-        return json.dumps({})
+    @property
+    def type(self):
+        return ScannerTypeEnum.STDIN
 
     def present(self):
         return True
