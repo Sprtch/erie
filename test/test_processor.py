@@ -1,340 +1,154 @@
 import unittest
-from despinassy import db
-from despinassy.Scanner import ScannerTypeEnum, Scanner as ScannerTable, ScannerTransaction
-from despinassy.ipc import create_nametuple
-from erie.message import Message
-from erie.devices.device import DeviceWrapper
-from erie.processor import Processor
-import dataclasses
-
-
-@dataclasses.dataclass
-class DeviceTester(DeviceWrapper):
-    DEVICE_TYPE: ScannerTypeEnum = ScannerTypeEnum.TEST
-    input_list: list = dataclasses.field(default_factory=list)
-
-    def export_config(self):
-        return "{}"
-
-    def retrieve(self):
-        for msg in self.input_list:
-            yield msg
-
-    def read_loop(self):
-        for x in self.retrieve():
-            yield create_nametuple(Message, {},
-                                   barcode=x,
-                                   device=self.name,
-                                   redis=self.redis)
-
-
-class ProcessorTester(Processor):
-    def __init__(self, dev):
-        super().__init__(dev)
-        self._msgs = []
-
-    def _process_dispatch(self, msg):
-        self._msgs.append(msg)
-
-    def clear(self):
-        self._msgs = []
-
-    def get_messages(self):
-        return self._msgs
+from erie.processor.base import Processor
+from erie.schema.message import IpcIncompleteMessage, IpcPrintMessage
+from erie.schema.type import ScannerModeEnum
 
 
 class TestProcessor(unittest.TestCase):
-    @classmethod
-    def setUpClass(self):
-        db.init_app(config={
-            'uri': 'sqlite://',
-        })
-        db.drop_all()
-        db.create_all()
-        ScannerTransaction.query.delete()
-        ScannerTable.query.delete()
+    def setUp(self):
+        self.proc = Processor()
 
-    @classmethod
-    def tearDownClass(self):
-        db.drop_all()
-
-    def tearDown(self):
-        ScannerTransaction.query.delete()
-        ScannerTable.query.delete()
-
-    def test_processor_none(self):
-        dev = DeviceTester(
-            name="test",
-            redis="test",
-        )
-        proc = ProcessorTester(dev)
-        proc.read()
-        self.assertEqual(proc.get_messages(), [])
+    def test_initial_state(self):
+        result = self.proc.read(IpcIncompleteMessage(content="FOO1234BAR", device="test"))
+        self.assertIsNotNone(result)
+        self.assertEqual(result.content, "FOO1234BAR")
+        self.assertEqual(result.type, ScannerModeEnum.PRINTMODE)
 
     def test_processor_barcode(self):
-        RESULT = Message(barcode='FOO1234BAR',
-                         redis='test',
-                         device='test',
-                         number=1)
-        dev = DeviceTester(name="test",
-                           redis="test",
-                           input_list=["FOO1234BAR"])
-        proc = ProcessorTester(dev)
-        proc.read()
-        self.assertEqual(proc.get_messages(), [RESULT])
-        self.assertEqual(ScannerTable.query.count(), 1)
-        s = ScannerTable.query.get(1) # First is default 'huron' scanner
-        self.assertIsNotNone(s)
-        self.assertEqual(s.type, dev.get_type())
-        self.assertEqual(s.name, dev.name)
-        self.assertEqual(s.settings, dev.export_config())
-        self.assertEqual(ScannerTransaction.query.count(), 1)
+        msg = IpcIncompleteMessage(content="FOO1234BAR", device="test")
+        result = self.proc.read(msg)
+        self.assertIsNotNone(result)
+        self.assertEqual(result.content, "FOO1234BAR")
+        self.assertEqual(result.type, ScannerModeEnum.PRINTMODE)
 
     def test_processor_multiplier(self):
-        RESULT = Message(barcode='FOO1234BAR',
-                         redis='test',
-                         device='test',
-                         number=2)
-        dev = DeviceTester(name="test",
-                           redis="test",
-                           input_list=["SPRTCHCMD:MULTIPLIER:2", "FOO1234BAR"])
-        proc = ProcessorTester(dev)
-        proc.read()
-        self.assertEqual(proc.get_messages(), [RESULT])
+        multiplier_msg = IpcIncompleteMessage(content="SPRTCHCMD:MULTIPLIER:2", device="test")
+        barcode_msg = IpcIncompleteMessage(content="FOO1234BAR", device="test")
+        self.proc.read(multiplier_msg)
+        result = self.proc.read(barcode_msg)
+        self.assertIsNotNone(result)
+        self.assertEqual(result.content, "FOO1234BAR")
+        self.assertEqual(result.quantity, "2")
 
-        self.assertEqual(ScannerTable.query.count(), 1)
-        s = ScannerTable.query.get(1)
-        self.assertIsNotNone(s)
-        self.assertEqual(s.type, dev.get_type())
-        self.assertEqual(s.name, dev.name)
-        self.assertEqual(s.settings, dev.export_config())
-        self.assertEqual(ScannerTransaction.query.count(), 1)
+        self.proc = Processor()
+        multiplier_msg = IpcIncompleteMessage(content="SPRTCHCMD:MULTIPLIER:4", device="test")
+        barcode_msg = IpcIncompleteMessage(content="FOO1234BAR", device="test")
+        self.proc.read(multiplier_msg)
+        result = self.proc.read(barcode_msg)
+        self.assertEqual(result.quantity, "4")
 
-        RESULT = Message(barcode='FOO1234BAR',
-                         redis='test',
-                         device='test',
-                         number=4)
-        dev = DeviceTester(name="test",
-                           redis="test",
-                           input_list=["SPRTCHCMD:MULTIPLIER:4", "FOO1234BAR"])
-        proc = ProcessorTester(dev)
-        proc.read()
-        self.assertEqual(proc.get_messages(), [RESULT])
-
-        self.assertEqual(ScannerTable.query.count(), 1)
-        self.assertEqual(ScannerTransaction.query.count(), 2)
-
-        RESULT = Message(barcode='FOO1234BAR',
-                         redis='test',
-                         device='test',
-                         number=8)
-        dev = DeviceTester(name="test",
-                           redis="test",
-                           input_list=[
-                               "SPRTCHCMD:MULTIPLIER:4",
-                               "SPRTCHCMD:MULTIPLIER:2", "FOO1234BAR"
-                           ])
-        proc = ProcessorTester(dev)
-        proc.read()
-        self.assertEqual(proc.get_messages(), [RESULT])
-
-        self.assertEqual(ScannerTable.query.count(), 1)
-        self.assertEqual(ScannerTransaction.query.count(), 3)
+        self.proc = Processor()
+        self.proc.read(IpcIncompleteMessage(content="SPRTCHCMD:MULTIPLIER:4", device="test"))
+        self.proc.read(IpcIncompleteMessage(content="SPRTCHCMD:MULTIPLIER:2", device="test"))
+        result = self.proc.read(IpcIncompleteMessage(content="FOO1234BAR", device="test"))
+        self.assertEqual(result.quantity, "8")
 
     def test_processor_clear(self):
-        RESULT = Message(barcode='FOO1234BAR',
-                         redis='test',
-                         device='test',
-                         number=1)
-        dev = DeviceTester(name="test",
-                           redis="test",
-                           input_list=[
-                               "SPRTCHCMD:MULTIPLIER:4",
-                               "SPRTCHCMD:MULTIPLIER:2", "SPRTCHCMD:CLEAR:0",
-                               "FOO1234BAR"
-                           ])
-        proc = ProcessorTester(dev)
-        proc.read()
-        self.assertEqual(proc.get_messages(), [RESULT])
-
-        self.assertEqual(ScannerTable.query.count(), 1)
-        self.assertEqual(ScannerTransaction.query.count(), 1)
+        self.proc.read(IpcIncompleteMessage(content="SPRTCHCMD:MULTIPLIER:4", device="test"))
+        self.proc.read(IpcIncompleteMessage(content="SPRTCHCMD:MULTIPLIER:2", device="test"))
+        self.proc.read(IpcIncompleteMessage(content="SPRTCHCMD:CLEAR:0", device="test"))
+        result = self.proc.read(IpcIncompleteMessage(content="FOO1234BAR", device="test"))
+        self.assertEqual(result.quantity, "1")
 
     def test_processor_negative(self):
-        RESULT = Message(barcode='FOO1234BAR',
-                         redis='test',
-                         device='test',
-                         number=-4)
-        dev = DeviceTester(name="test",
-                           redis="test",
-                           input_list=[
-                               "SPRTCHCMD:MULTIPLIER:4",
-                               "SPRTCHCMD:NEGATIVE:0", "FOO1234BAR"
-                           ])
-        proc = ProcessorTester(dev)
-        proc.read()
-        self.assertEqual(proc.get_messages(), [RESULT])
+        self.proc.read(IpcIncompleteMessage(content="SPRTCHCMD:MULTIPLIER:4", device="test"))
+        self.proc.read(IpcIncompleteMessage(content="SPRTCHCMD:NEGATIVE:0", device="test"))
+        result = self.proc.read(IpcIncompleteMessage(content="FOO1234BAR", device="test"))
+        self.assertEqual(result.quantity, "-4")
 
-        self.assertEqual(ScannerTable.query.count(), 1)
-        self.assertEqual(ScannerTransaction.query.count(), 1)
-
-        dev = DeviceTester(name="test",
-                           redis="test",
-                           input_list=[
-                               "SPRTCHCMD:NEGATIVE:0",
-                               "SPRTCHCMD:MULTIPLIER:4", "FOO1234BAR"
-                           ])
-        proc = ProcessorTester(dev)
-        proc.read()
-
-        self.assertEqual(ScannerTable.query.count(), 1)
-        self.assertEqual(ScannerTransaction.query.count(), 2)
+        self.proc = Processor()
+        self.proc.read(IpcIncompleteMessage(content="SPRTCHCMD:NEGATIVE:0", device="test"))
+        self.proc.read(IpcIncompleteMessage(content="SPRTCHCMD:MULTIPLIER:4", device="test"))
+        result = self.proc.read(IpcIncompleteMessage(content="FOO1234BAR", device="test"))
+        self.assertEqual(result.quantity, "-4")
 
     def test_processor_digit(self):
-        RESULT = Message(barcode='FOO1234BAR',
-                         redis='test',
-                         device='test',
-                         number=42.0)
-        dev = DeviceTester(name="test",
-                           redis="test",
-                           input_list=[
-                               "SPRTCHCMD:DIGIT:4", "SPRTCHCMD:DIGIT:2",
-                               "FOO1234BAR"
-                           ])
-        proc = ProcessorTester(dev)
-        proc.read()
-        self.assertEqual(proc.get_messages(), [RESULT])
+        self.proc.read(IpcIncompleteMessage(content="SPRTCHCMD:DIGIT:4", device="test"))
+        self.proc.read(IpcIncompleteMessage(content="SPRTCHCMD:DIGIT:2", device="test"))
+        result = self.proc.read(IpcIncompleteMessage(content="FOO1234BAR", device="test"))
+        self.assertEqual(result.quantity, "42")
 
-        self.assertEqual(ScannerTable.query.count(), 1)
-        self.assertEqual(ScannerTransaction.query.count(), 1)
+        self.proc = Processor()
+        self.proc.read(IpcIncompleteMessage(content="SPRTCHCMD:DIGIT:0", device="test"))
+        self.proc.read(IpcIncompleteMessage(content="SPRTCHCMD:DIGIT:4", device="test"))
+        self.proc.read(IpcIncompleteMessage(content="SPRTCHCMD:DIGIT:2", device="test"))
+        result = self.proc.read(IpcIncompleteMessage(content="FOO1234BAR", device="test"))
+        self.assertEqual(result.quantity, "42")
 
-        dev = DeviceTester(name="test",
-                           redis="test",
-                           input_list=[
-                               "SPRTCHCMD:DIGIT:0", "SPRTCHCMD:DIGIT:4",
-                               "SPRTCHCMD:DIGIT:2", "FOO1234BAR"
-                           ])
-        proc = ProcessorTester(dev)
-        proc.read()
-        msgs = proc.get_messages()
-        self.assertEqual(len(msgs), 1)
-        self.assertEqual(msgs[0].number, 42)
+        self.proc = Processor()
+        self.proc.read(IpcIncompleteMessage(content="SPRTCHCMD:DIGIT:0", device="test"))
+        self.proc.read(IpcIncompleteMessage(content="SPRTCHCMD:DIGIT:4", device="test"))
+        self.proc.read(IpcIncompleteMessage(content="SPRTCHCMD:DIGIT:2", device="test"))
+        self.proc.read(IpcIncompleteMessage(content="SPRTCHCMD:MULTIPLIER:2", device="test"))
+        result = self.proc.read(IpcIncompleteMessage(content="FOO1234BAR", device="test"))
+        self.assertEqual(result.quantity, "84")
 
-        self.assertEqual(ScannerTable.query.count(), 1)
-        self.assertEqual(ScannerTransaction.query.count(), 2)
-
-        dev = DeviceTester(name="test",
-                           redis="test",
-                           input_list=[
-                               "SPRTCHCMD:DIGIT:0", "SPRTCHCMD:DIGIT:4",
-                               "SPRTCHCMD:DIGIT:2", "SPRTCHCMD:MULTIPLIER:2",
-                               "FOO1234BAR"
-                           ])
-        proc = ProcessorTester(dev)
-        proc.read()
-        msgs = proc.get_messages()
-        self.assertEqual(len(msgs), 1)
-        self.assertEqual(msgs[0].number, 84)
-
-        self.assertEqual(ScannerTable.query.count(), 1)
-        self.assertEqual(ScannerTransaction.query.count(), 3)
-
-        dev = DeviceTester(name="test",
-                           redis="test",
-                           input_list=[
-                               "SPRTCHCMD:DIGIT:0", "SPRTCHCMD:DIGIT:4",
-                               "SPRTCHCMD:MULTIPLIER:2", "SPRTCHCMD:DIGIT:2",
-                               "FOO1234BAR"
-                           ])
-        proc = ProcessorTester(dev)
-        proc.read()
-        msgs = proc.get_messages()
-        self.assertEqual(len(msgs), 1)
-        self.assertEqual(msgs[0].number, 82)
-
-        self.assertEqual(ScannerTable.query.count(), 1)
-        self.assertEqual(ScannerTransaction.query.count(), 4)
+        self.proc = Processor()
+        self.proc.read(IpcIncompleteMessage(content="SPRTCHCMD:DIGIT:0", device="test"))
+        self.proc.read(IpcIncompleteMessage(content="SPRTCHCMD:DIGIT:4", device="test"))
+        self.proc.read(IpcIncompleteMessage(content="SPRTCHCMD:MULTIPLIER:2", device="test"))
+        self.proc.read(IpcIncompleteMessage(content="SPRTCHCMD:DIGIT:2", device="test"))
+        result = self.proc.read(IpcIncompleteMessage(content="FOO1234BAR", device="test"))
+        self.assertEqual(result.quantity, "82")
 
     def test_processor_dotted(self):
-        RESULT = Message(barcode='FOO1234BAR',
-                         redis='test',
-                         device='test',
-                         number=4.2)
-        dev = DeviceTester(name="test",
-                           redis="test",
-                           input_list=[
-                               "SPRTCHCMD:DIGIT:4", "SPRTCHCMD:DOTTED:0",
-                               "SPRTCHCMD:DIGIT:2", "FOO1234BAR"
-                           ])
-        proc = ProcessorTester(dev)
-        proc.read()
-        self.assertEqual(proc.get_messages(), [RESULT])
+        self.proc.read(IpcIncompleteMessage(content="SPRTCHCMD:DIGIT:4", device="test"))
+        self.proc.read(IpcIncompleteMessage(content="SPRTCHCMD:DOTTED:0", device="test"))
+        self.proc.read(IpcIncompleteMessage(content="SPRTCHCMD:DIGIT:2", device="test"))
+        result = self.proc.read(IpcIncompleteMessage(content="FOO1234BAR", device="test"))
+        self.assertEqual(result.quantity, "4.2")
 
-        self.assertEqual(ScannerTable.query.count(), 1)
-        self.assertEqual(ScannerTransaction.query.count(), 1)
+        self.proc = Processor()
+        self.proc.read(IpcIncompleteMessage(content="SPRTCHCMD:DOTTED:0", device="test"))
+        self.proc.read(IpcIncompleteMessage(content="SPRTCHCMD:DIGIT:2", device="test"))
+        result = self.proc.read(IpcIncompleteMessage(content="FOO1234BAR", device="test"))
+        self.assertEqual(result.quantity, "0.2")
 
-        dev = DeviceTester(name="test",
-                           redis="test",
-                           input_list=[
-                               "SPRTCHCMD:DOTTED:0", "SPRTCHCMD:DIGIT:2",
-                               "FOO1234BAR"
-                           ])
-        proc = ProcessorTester(dev)
-        proc.read()
-        msgs = proc.get_messages()
-        self.assertEqual(len(msgs), 1)
-        self.assertEqual(msgs[0].number, .2)
+        self.proc = Processor()
+        self.proc.read(IpcIncompleteMessage(content="SPRTCHCMD:DOTTED:0", device="test"))
+        self.proc.read(IpcIncompleteMessage(content="SPRTCHCMD:DIGIT:2", device="test"))
+        self.proc.read(IpcIncompleteMessage(content="SPRTCHCMD:MULTIPLIER:2", device="test"))
+        result = self.proc.read(IpcIncompleteMessage(content="FOO1234BAR", device="test"))
+        self.assertEqual(result.quantity, "0.4")
 
-        self.assertEqual(ScannerTable.query.count(), 1)
-        self.assertEqual(ScannerTransaction.query.count(), 2)
+        self.proc = Processor()
+        self.proc.read(IpcIncompleteMessage(content="SPRTCHCMD:DOTTED:0", device="test"))
+        self.proc.read(IpcIncompleteMessage(content="SPRTCHCMD:DIGIT:2", device="test"))
+        self.proc.read(IpcIncompleteMessage(content="SPRTCHCMD:MULTIPLIER:2", device="test"))
+        self.proc.read(IpcIncompleteMessage(content="SPRTCHCMD:DIGIT:2", device="test"))
+        result = self.proc.read(IpcIncompleteMessage(content="FOO1234BAR", device="test"))
+        self.assertEqual(result.quantity, "0.42")
 
-        dev = DeviceTester(name="test",
-                           redis="test",
-                           input_list=[
-                               "SPRTCHCMD:DOTTED:0", "SPRTCHCMD:DIGIT:2",
-                               "SPRTCHCMD:MULTIPLIER:2", "FOO1234BAR"
-                           ])
-        proc = ProcessorTester(dev)
-        proc.read()
-        msgs = proc.get_messages()
-        self.assertEqual(len(msgs), 1)
-        self.assertEqual(msgs[0].number, .4)
+        self.proc = Processor()
+        self.proc.read(IpcIncompleteMessage(content="SPRTCHCMD:DOTTED:0", device="test"))
+        self.proc.read(IpcIncompleteMessage(content="SPRTCHCMD:DIGIT:2", device="test"))
+        self.proc.read(IpcIncompleteMessage(content="SPRTCHCMD:MULTIPLIER:2", device="test"))
+        self.proc.read(IpcIncompleteMessage(content="SPRTCHCMD:DIGIT:2", device="test"))
+        self.proc.read(IpcIncompleteMessage(content="SPRTCHCMD:NEGATIVE:0", device="test"))
+        result = self.proc.read(IpcIncompleteMessage(content="FOO1234BAR", device="test"))
+        self.assertEqual(result.quantity, "-0.42")
 
-        self.assertEqual(ScannerTable.query.count(), 1)
-        self.assertEqual(ScannerTransaction.query.count(), 3)
+    def test_processor_mode_inventory(self):
+        self.proc.read(IpcIncompleteMessage(content="SPRTCHCMD:MODE:INVENTORY", device="test"))
+        result = self.proc.read(IpcIncompleteMessage(content="FOO1234BAR", device="test"))
+        self.assertIsNotNone(result)
+        self.assertEqual(result.type, ScannerModeEnum.INVENTORYMODE)
 
-        dev = DeviceTester(name="test",
-                           redis="test",
-                           input_list=[
-                               "SPRTCHCMD:DOTTED:0", "SPRTCHCMD:DIGIT:2",
-                               "SPRTCHCMD:MULTIPLIER:2", "SPRTCHCMD:DIGIT:2",
-                               "FOO1234BAR"
-                           ])
-        proc = ProcessorTester(dev)
-        proc.read()
-        msgs = proc.get_messages()
-        self.assertEqual(len(msgs), 1)
-        self.assertEqual(msgs[0].number, .42)
+    def test_processor_mode_print(self):
+        self.proc.read(IpcIncompleteMessage(content="SPRTCHCMD:MODE:INVENTORY", device="test"))
+        self.proc.read(IpcIncompleteMessage(content="SPRTCHCMD:MODE:PRINT", device="test"))
+        result = self.proc.read(IpcIncompleteMessage(content="FOO1234BAR", device="test"))
+        self.assertIsNotNone(result)
+        self.assertEqual(result.type, ScannerModeEnum.PRINTMODE)
 
-        self.assertEqual(ScannerTable.query.count(), 1)
-        self.assertEqual(ScannerTransaction.query.count(), 4)
+    def test_match_invalid_command(self):
+        result = self.proc.match("SPRTCHCMD:INVALID")
+        self.assertIsNone(result)
 
-        dev = DeviceTester(name="test",
-                           redis="test",
-                           input_list=[
-                               "SPRTCHCMD:DOTTED:0", "SPRTCHCMD:DIGIT:2",
-                               "SPRTCHCMD:MULTIPLIER:2", "SPRTCHCMD:DIGIT:2",
-                               "SPRTCHCMD:NEGATIVE:0", "FOO1234BAR"
-                           ])
-        proc = ProcessorTester(dev)
-        proc.read()
-        msgs = proc.get_messages()
-        self.assertEqual(len(msgs), 1)
-        self.assertEqual(msgs[0].number, -0.42)
-
-        self.assertEqual(ScannerTable.query.count(), 1)
-        self.assertEqual(ScannerTransaction.query.count(), 5)
+    def test_match_non_command(self):
+        result = self.proc.match("FOO1234BAR")
+        self.assertIsNone(result)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

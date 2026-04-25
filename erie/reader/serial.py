@@ -1,54 +1,58 @@
-from erie.reader.base import Reader
-from despinassy.Scanner import ScannerTypeEnum
-from typing import Optional
-import logging
 import dataclasses
-import serial
+import logging
 import os
+from typing import Optional
+
+import serial
+
+from erie.reader.file import FileStreamReader
+from erie.schema.type import ScannerTypeEnum
 
 logger = logging.getLogger(__name__)
 
 
+class SerialWrapper:
+    def __init__(self, dev):
+        self._dev = dev
+
+    @property
+    def closed(self):
+        return not self._dev.is_open
+
+    def readline(self):
+        line = self._dev.readline()
+        if line:
+            return line.decode("utf-8").strip()
+        return ""
+
+    def fileno(self):
+        return self._dev.fileno()
+
+    def close(self):
+        self._dev.close()
+
+
 @dataclasses.dataclass
-class Serial(Reader):
-    """
-    """
-    path: Optional[str] = None
+class SerialReader(FileStreamReader):
+    """Reader device reading from 'serial' linux device."""
+
+    path: str = None
     deviceid: Optional[str] = None
+    io: Optional = None
 
     def __post_init__(self):
         if not (self.path or self.deviceid):
             logger.error("Must specify a path or device id")
 
         if self.deviceid:
-            self.path = "/dev/serial/by-id/%s" % (self.deviceid)
-
-        self._dev = None
+            self.path = f"/dev/serial/by-id/{self.deviceid}"
 
     @property
     def type(self):
         return ScannerTypeEnum.SERIAL
 
-    # def export_config(self):
-    #     return json.dumps({
-    #         "path": self.path,
-    #     })
-
-    def present(self):
+    def connect(self):
+        logger.debug(f"[{self.__class__.__name__}] Opening '{self.path}'")
         if os.path.exists(self.path):
-            logger.info("Barcode scanner found")
-            self._dev = serial.Serial(self.path, 9600, timeout=1)
-        else:
-            logger.debug("Still no barcode scanner found")
-            self._dev = None
-
-        return self._dev is not None
-
-    def retrieve(self):
-        try:
-            while 1:
-                line = self._dev.readline().decode('utf-8').strip()
-                if line:
-                    yield line
-        except serial.serialutil.SerialException as e:
-            logger.error(e)
+            dev = serial.Serial(self.path, 9600, timeout=1)
+            self.io = SerialWrapper(dev)

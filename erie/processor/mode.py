@@ -1,70 +1,57 @@
-from erie.message import Message
-from despinassy import Part, Inventory, db
-from despinassy.ipc import create_nametuple, redis_subscribers_num, ipc_create_print_message, IpcOrigin
-from despinassy.Scanner import ScannerModeEnum
-from redis import ConnectionError, Redis
+# from erie.schema.message import Message
+from abc import ABC, abstractmethod
+from erie.schema.type import ScannerModeEnum
+from erie.schema.message import (
+    IpcIncompleteMessage,
+    IpcCompleteMessage,
+    IpcPrintMessage,
+    IpcInventoryMessage,
+)
 import logging
-import json
-
-r = Redis(host='localhost', port=6379, db=0)
-p = r.pubsub()
+import dataclasses
 
 logger = logging.getLogger(__name__)
 
 
-class ProcessorMode:
-    MODE = ScannerModeEnum.UNDEFINED
+class ProcessorMode(ABC):
+    # MODE = ScannerModeEnum.UNDEFINED
 
-    def process(self, msg: Message):
-        raise NotImplementedError
+    @property
+    @abstractmethod
+    def type(self): ...
+
+    @abstractmethod
+    def process(self, msg: IpcIncompleteMessage, **kwargs) -> IpcCompleteMessage: ...
+
+
+def narrow_internal_representation(msg: InternalRepresentation, target) -> dict:
+    valid_keys = {f.name for f in dataclasses.fields(target)}
+
+    msg_dict = msg.asdict()
+    return {k: v for k, v in msg_dict.items() if k in valid_keys}
 
 
 class PrintModeProcessor(ProcessorMode):
-    MODE = ScannerModeEnum.PRINTMODE
+    @property
+    def type(self):
+        return ScannerModeEnum.PRINTMODE
 
-    def process(self, msg: Message):
-        in_db = Part.query.filter(Part.barcode == msg.barcode).first()
-        name = ''
-        if in_db:
-            name = in_db.name
-            logger.info("[%s] Scanned '%s' and found '%s'" %
-                        (msg.device, msg.barcode, name))
-        else:
-            name = msg.barcode
-            logger.info("[%s] Scanned '%s'" % (msg.device, msg.barcode))
-
-        try:
-            ipc_msg = ipc_create_print_message(msg,
-                                               number=int(msg.number),
-                                               origin=IpcOrigin.ERIE,
-                                               name=name)._asdict()
-            if redis_subscribers_num(r, msg.redis):
-                r.publish(msg.redis, json.dumps(ipc_msg))
-            else:
-                logger.warning(
-                    "[%s] No recipient on channel '%s' for the message: ''%s'"
-                    % (msg.device, msg.redis, json.dumps(ipc_msg)))
-        except ConnectionError as e:
-            logger.error(e)
+    def process(self, msg: InternalRepresentation, **kwargs) -> IpcPrintMessage:
+        # TODO Return IpcPrintMessage
+        return IpcPrintMessage(
+            **narrow_internal_representation(msg, IpcPrintMessage),
+            type=self.type,
+        )
 
 
 class InventoryModeProcessor(ProcessorMode):
-    MODE = ScannerModeEnum.INVENTORYMODE
+    @property
+    def type(self):
+        return ScannerModeEnum.INVENTORYMODE
 
-    def process(self, msg: Message):
-        in_db = Part.query.filter(Part.barcode == msg.barcode).first()
-        if in_db:
-            msg = create_nametuple(Message, msg._asdict(), name=in_db.name)
-            i = None
-            if len(in_db.inventories):
-                i = in_db.inventories[0]
-                i.add(msg.number)
-            else:
-                i = Inventory(part=in_db, quantity=int(msg.number))
-                db.session.add(i)
-            logger.info("[%s] '%s' added %i time to Inventory (now %i entry)" %
-                        (msg.device, msg.barcode, msg.number, i.quantity))
-            db.session.commit()
-        else:
-            logger.warning("[%s] Barcode '%s' not found" %
-                           (msg.device, msg.barcode))
+    def process(self, msg: InternalRepresentation, **kwargs):
+        # TODO Return IpcPrintMessage
+        return IpcInventoryMessage(
+            **narrow_internal_representation(msg, IpcInventoryMessage),
+            type=self.type,
+        )

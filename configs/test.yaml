@@ -1,0 +1,10 @@
+erie:
+    name: "erie"
+    debug: true
+    nodaemon: true
+    devices:
+        - name: "stdin-input"
+          type: "stdin"
+          publisher:
+            type: 'redis'
+            channel: 'erie'

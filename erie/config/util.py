@@ -1,10 +1,12 @@
 from erie.config.config import Config
-from erie.reader.serial import Serial
+from erie.reader.serial import SerialReader
 from erie.reader.stdin import Stdin
-from erie.reader.evdev import Evdev
+from erie.reader.evdev import EvdevReader
 
 from erie.publisher.redis import Redis
 from erie.publisher.stdout import Stdout
+
+from erie.device import Device
 
 
 def generate_devices_from_config(config: Config):
@@ -19,40 +21,33 @@ def generate_devices_from_config(config: Config):
         if dev.type == "evdev":
             if not (dev.path or dev.device_id):
                 raise ValueError(f"{dev.name}: evdev requires 'path' or 'device_id'")
-            reader = Evdev(path=dev.path, device_id=dev.device_id)
+            reader = EvdevReader(path=dev.path, device_id=dev.device_id)
 
         elif dev.type == "serial":
             if not (dev.path or dev.device_id):
                 raise ValueError(f"{dev.name}: serial requires 'path' or 'device_id'")
-            reader = Serial(path=dev.path, device_id=dev.device_id)
-
-        elif dev.type == "stdout":
+            reader = SerialReader(path=dev.path, device_id=dev.device_id)
+        elif dev.type == "stdin":
             reader = Stdin()
-
         else:
             raise ValueError(f"{dev.name}: unknown device type '{dev.type}'")
 
-        output = []
-
-        out = dev.output
+        out = dev.publisher
         if out.type == "redis":
             if not out.channel:
-                raise ValueError(f"{dev.name}: redis output requires 'channel'")
-            output.append(Redis(
-                host=config.redis,
-                channel=out.channel
-            ))
-
+                raise ValueError(f"{dev.name}: redis publisher requires 'channel'")
+            print("HHHHHHHHHHHHHHHH")
+            print(out)
+            publisher = Redis(host=out.host, port=out.port, channel=out.channel)
         elif out.type == "stdout":
-            output.append(Stdout())
-
+            publisher = Stdout()
         else:
-            raise ValueError(f"{dev.name}: unknown output type '{out.type}'")
+            raise ValueError(f"{dev.name}: unknown publisher type '{out.type}'")
 
         device = Device(
             name=dev.name,
             reader=reader,
-            output=output
+            publisher=publisher,
         )
 
         devices.append(device)

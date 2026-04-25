@@ -1,8 +1,12 @@
-from abc import ABC
-
+from abc import ABC, abstractmethod
 import dataclasses
+
 
 @dataclasses.dataclass
 class Publisher(ABC):
-    def send(self):
-        pass
+    """Abstraction publish generic data."""
+
+    @abstractmethod
+    def send(self, msg):
+        """Publish payload content."""
+        ...

@@ -15,7 +15,7 @@ command to log in the console.
 ```txt
 > virtualenv venv
 > source venv/bin/activate
-> pip install -r requirements
+> pip install -r requirements.txt
 > pip install -e .
 > venv/bin/python erie -h
 usage: [-h] [--no-daemon] [--logfile LOGFILE] [--debug] [--pid PID] [-c CONFIG]
