@@ -8,3 +8,9 @@ erie:
           publisher:
             type: 'redis'
             channel: 'erie'
+        - name: "symbolfz"
+          type: "serial"
+          path: "/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A9UXOL6H-if00-port0"
+          baudrate: 9600
+          publisher:
+            type: 'stdout'

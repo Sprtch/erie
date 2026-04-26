@@ -37,15 +37,15 @@ class SerialReader(FileStreamReader):
     """Reader device reading from 'serial' linux device."""
 
     path: str = None
-    deviceid: Optional[str] = None
+    device_id: Optional[str] = None
     io: Optional = None
 
     def __post_init__(self):
-        if not (self.path or self.deviceid):
+        if not (self.path or self.device_id):
             logger.error("Must specify a path or device id")
 
-        if self.deviceid:
-            self.path = f"/dev/serial/by-id/{self.deviceid}"
+        if self.device_id:
+            self.path = f"/dev/serial/by-id/{self.device_id}"
 
     @property
     def type(self):
