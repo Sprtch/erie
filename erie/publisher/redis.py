@@ -14,6 +14,7 @@ class Redis(Publisher):
     db: int = 0
 
     def __post_init__(self):
+        super().__post_init__()
         self._client = None
 
     @property

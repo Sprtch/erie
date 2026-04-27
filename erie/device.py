@@ -43,7 +43,7 @@ class Device:
         self.logger.info("Init `read_loop` function.")
 
         while stop_event is None or not stop_event.is_set():
-            if self.publisher.available():
+            if not self.publisher.available():
                 self.logger.debug("Publisher is not available")
                 time.sleep(5)
                 continue
