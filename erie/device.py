@@ -6,8 +6,6 @@ import dataclasses
 import logging
 import time
 
-logger = logging.getLogger(__name__)
-
 
 @dataclasses.dataclass
 class Device:
@@ -34,25 +32,28 @@ class Device:
     processor: Processor = dataclasses.field(default_factory=Processor)
     """Processor to transform a raw input into a message"""
 
+    def __post_init__(self):
+        self.logger = logging.getLogger(f"{self.__class__.__name__}.{self.name}")
+
     def disconnect(self):
         # TODO send a message that notificate the disconnection.
         pass
 
     def read_loop(self, stop_event=None):
-        logger.info(
-            f"[{self.__class__.__name__}:{self.name}] Init `read_loop` function."
-        )
+        self.logger.info("Init `read_loop` function.")
 
         while stop_event is None or not stop_event.is_set():
+            if self.publisher.available():
+                self.logger.debug("Publisher is not available")
+                time.sleep(5)
+                continue
             if not self.reader.present():
                 self.publisher.send(
                     IpcDisconnectMessage(
                         device=self.name,
                     )
                 )
-                logger.debug(
-                    f"[{self.__class__.__name__}:{self.name}] Reader '{self.reader.type}' is not present"
-                )
+                self.logger.debug(f"Reader '{self.reader.type}' is not present")
                 time.sleep(5)
             else:
                 self.publisher.send(
@@ -60,9 +61,7 @@ class Device:
                         device=self.name,
                     )
                 )
-                logger.info(
-                    f"[{self.__class__.__name__}:{self.name}] Reader '{self.reader.type}' connecting."
-                )
+                self.logger.info(f"Reader '{self.reader.type}' connecting.")
                 with self.reader as reader:
                     for content in reader.retrieve(stop_event):
                         pre_msg = IpcIncompleteMessage(
@@ -71,9 +70,7 @@ class Device:
                         )
                         processed = self.processor.read(pre_msg)
                         self.publisher.send(processed)
-                logger.info(
-                    f"[{self.__class__.__name__}:{self.name}] Reader '{self.reader.type}' Disconnected."
-                )
+                self.logger.info(f"Reader '{self.reader.type}' Disconnected.")
         self.publisher.send(
             IpcDisconnectMessage(
                 device=self.name,

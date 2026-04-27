@@ -6,7 +6,6 @@ for barcode scanners and terminal input.
 """
 
 import dataclasses
-import logging
 
 from erie.processor.delay import (
     DigitProcessor,
@@ -21,8 +20,6 @@ from erie.schema.message import (
     IpcCompleteMessage,
     IpcIncompleteMessage,
 )
-
-logger = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass

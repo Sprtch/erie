@@ -1,6 +1,4 @@
 import dataclasses
-import logging
-import os
 import select
 from typing import Optional
 
@@ -9,8 +7,6 @@ from evdev.ecodes import EV_KEY
 
 from erie.reader.file import FileStreamReader
 from erie.schema.type import ScannerTypeEnum
-
-logger = logging.getLogger(__name__)
 
 
 class EvdevWrapper:
@@ -52,7 +48,7 @@ class EvdevReader(FileStreamReader):
 
     def __post_init__(self):
         if not (self.path or self.deviceid):
-            logger.error("Must specify a path or device id")
+            self.logger.error("Must specify a path or device id")
 
         if self.deviceid:
             self.path = f"/dev/input/by-id/{self.deviceid}"
@@ -65,7 +61,7 @@ class EvdevReader(FileStreamReader):
         return ScannerTypeEnum.EVDEV
 
     def connect(self):
-        logger.debug(f"[{self.__class__.__name__}] Opening '{self.path}'")
+        self.logger.debug(f"Opening '{self.path}'")
         if self.present():
             dev = evdev.InputDevice(self.path)
             self.io = EvdevWrapper(dev)
@@ -85,7 +81,7 @@ class EvdevReader(FileStreamReader):
         try:
             events = self.io.read_events()
         except OSError:
-            logger.warning("Barcode scanner just disconnected")
+            self.logger.warning("Barcode scanner just disconnected")
             return None
 
         for ev in events:
@@ -114,7 +110,7 @@ class EvdevReader(FileStreamReader):
     #     try:
     #         for ev in self._dev.read_loop():
     #             if stop_event is not None and stop_event.is_set():
-    #                 logger.debug("[%s] stop_event set: exiting", self.type)
+    #                 self.logger.debug("[%s] stop_event set: exiting", self.type)
     #                 return
     #
     #             if ev.type == EV_KEY:
@@ -128,4 +124,4 @@ class EvdevReader(FileStreamReader):
     #                     elif len(key):
     #                         barcode += str(key)
     #     except OSError:
-    #         logger.warning("Barcode scanner just disconnected")
+    #         self.logger.warning("Barcode scanner just disconnected")

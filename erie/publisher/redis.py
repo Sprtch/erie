@@ -2,9 +2,6 @@ from erie.publisher.base import Publisher
 import dataclasses
 import redis
 import json
-import logging
-
-logger = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass
@@ -27,6 +24,13 @@ class Redis(Publisher):
             )
         return self._client
 
+    def available(self):
+        """Verify the redis connection is possible."""
+        try:
+            return self.client.ping()
+        except redis.RedisError:
+            return False
+
     def send(self, msg):
         """Publish a message to the configured Redis channel.
 
@@ -45,7 +49,7 @@ class Redis(Publisher):
                 payload = str(msg)
 
             self.client.publish(self.channel, payload)
-            logger.debug(f"Published to {self.channel}: {payload}")
+            self.logger.debug(f"Published to {self.channel}: {payload}")
         except redis.RedisError as e:
-            logger.error(f"Redis publish error: {e}")
+            self.logger.error(f"Redis publish error: {e}")
             raise

@@ -1,15 +1,11 @@
 from erie.reader.base import Reader
 from erie.schema.type import ScannerTypeEnum
-from typing import Iterator, Optional
+from typing import Optional
 from io import IOBase
 
-# import sys
 import os
-import logging
 import dataclasses
 import select
-
-logger = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass
@@ -47,13 +43,13 @@ class FileStreamReader(Reader):
 
         if not line:
             # readline() returns '' on EOF
-            logger.debug("[%s] stdin EOF", self.type)
+            self.logger.debug("FileStream EOF")
             return None
 
         return str(line.strip("\n"))
 
     def connect(self):
-        logger.debug(f"[{self.__class__.__name__}] Opening '{self.path}'")
+        self.logger.debug(f"Opening '{self.path}'")
         if self.present():
             self.io = open(self.path)
 
@@ -65,9 +61,9 @@ class FileStreamReader(Reader):
         try:
             if self.connected():
                 self.io.close()
-                logger.debug(f"[{self.__class__.__name__}] Closing '{self.path}'.")
+                self.logger.debug(f"Closing '{self.path}'.")
             else:
-                logger.debug(f"[{self.__class__.__name__}] '{self.path}' already closed.")
+                self.logger.debug(f"'{self.path}' already closed.")
         except OSError:
             pass
 
@@ -85,7 +81,7 @@ class IoReader(FileStreamReader):
         If the class pass already an IOReader (ex: stdin), override the
         'present' method to not check the path as it will be empty.
         """
-        logger.debug(f"[{self.__class__.__name__}] Forwarding 'present' to 'connected'.")
+        self.logger.debug("Forwarding 'present' to 'connected'.")
         return self.connected()
 
     def connect(self) -> None:
@@ -94,4 +90,4 @@ class IoReader(FileStreamReader):
         If the class pass already an IOReader (ex: stdin), override the
         'connect' method to not open the path as it will be empty.
         """
-        logger.debug(f"[{self.__class__.__name__}] IOReader connecting.")
+        self.logger.debug("IOReader connecting.")

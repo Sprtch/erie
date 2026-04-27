@@ -1,5 +1,4 @@
 import dataclasses
-import logging
 import os
 from typing import Optional
 
@@ -7,8 +6,6 @@ import serial
 
 from erie.reader.file import FileStreamReader
 from erie.schema.type import ScannerTypeEnum
-
-logger = logging.getLogger(__name__)
 
 
 class SerialWrapper:
@@ -42,7 +39,7 @@ class SerialReader(FileStreamReader):
 
     def __post_init__(self):
         if not (self.path or self.device_id):
-            logger.error("Must specify a path or device id")
+            self.logger.error("Must specify a path or device id")
 
         if self.device_id:
             self.path = f"/dev/serial/by-id/{self.device_id}"
@@ -52,7 +49,7 @@ class SerialReader(FileStreamReader):
         return ScannerTypeEnum.SERIAL
 
     def connect(self):
-        logger.debug(f"[{self.__class__.__name__}] Opening '{self.path}'")
+        self.logger.debug(f"[{self.__class__.__name__}] Opening '{self.path}'")
         if os.path.exists(self.path):
             dev = serial.Serial(self.path, 9600, timeout=1)
             self.io = SerialWrapper(dev)

@@ -1,10 +1,7 @@
 from erie.reader.file import IoReader
 import io
 import sys
-import logging
 import dataclasses
-
-logger = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass
