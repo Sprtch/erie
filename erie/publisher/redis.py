@@ -30,6 +30,7 @@ class Redis(Publisher):
         try:
             return self.client.ping()
         except redis.RedisError:
+            self._client = None
             return False
 
     def send(self, msg):

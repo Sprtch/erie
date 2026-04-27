@@ -1,9 +1,7 @@
 import dataclasses
 import os
-from typing import Optional
-
 import serial
-
+from typing import Optional
 from erie.reader.file import FileStreamReader
 from erie.schema.type import ScannerTypeEnum
 

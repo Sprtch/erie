@@ -6,7 +6,9 @@ import yaml
 
 @dataclasses.dataclass
 class ConfigDevicePublisher:
-    type: str
+    """Publisher configuration."""
+
+    type: str = "redis"
     """Publisher type ('redis', 'stdout')"""
 
     host: str = "localhost"
@@ -21,6 +23,8 @@ class ConfigDevicePublisher:
 
 @dataclasses.dataclass
 class ConfigDevice:
+    """Device configuration."""
+
     name: str
     """Device name"""
 
@@ -44,8 +48,6 @@ class Config:
     name: str = "erie"
     """Name of the application"""
 
-    redis: str = "victoria"
-
     debug: bool = False
     """Use debugging logging level (default 'warn')"""
 
@@ -58,6 +60,9 @@ class Config:
     pidfile: Optional[str] = None
     """Pid file location required for daemon mode (default: None)"""
 
+    publisher: ConfigDevicePublisher = dataclasses.field(default_factory=ConfigDevicePublisher)
+    """Default 'publisher' configuration. This publisher will be used if device doesn't define any publisher."""
+
     devices: List[ConfigDevice] = dataclasses.field(default_factory=list)
     """Device definition array"""
 
@@ -68,35 +73,27 @@ class Config:
             if value is not None:
                 data[key] = value
 
+        default_publisher = data.get("publisher", dataclasses.asdict(ConfigDevicePublisher()))
+
         devices = []
         for d in data.get("devices", []):
-            out_data = d.get("publisher", {})
+            out_data = d.get("publisher", default_publisher)
             publisher = ConfigDevicePublisher(
-                type=out_data.get("type", "stdout"),
-                host=out_data.get("host", "localhost"),
-                port=out_data.get("port", 6379),
-                channel=out_data.get("channel", "erie"),
+                **out_data,
             )
 
             devices.append(
-                ConfigDevice(
-                    name=d["name"],
-                    type=d["type"],
-                    publisher=publisher,
-                    path=d.get("path"),
-                    device_id=d.get("device_id"),
-                )
+                ConfigDevice(**{
+                    **d,
+                    "publisher": publisher,
+                })
             )
 
-        return Config(
-            name=data.get("name", Config.name),
-            redis=data.get("redis", Config.redis),
-            debug=data.get("debug", Config.debug),
-            nodaemon=data.get("nodaemon", Config.nodaemon),
-            logfile=data.get("logfile"),
-            pidfile=data.get("pidfile"),
-            devices=devices,
-        )
+        return Config(**{
+            **data,
+            "publisher": default_publisher,
+            "devices": devices,
+        })
 
     @staticmethod
     def from_yaml(path: str, **kwargs) -> "Config":

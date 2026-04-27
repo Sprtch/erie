@@ -2,15 +2,14 @@ erie:
     name: "erie"
     debug: true
     nodaemon: true
+    publisher:
+      type: "redis"
+      channel: "erie"
     devices:
         - name: "stdin-input"
           type: "stdin"
-          publisher:
-            type: 'redis'
-            channel: 'erie'
         - name: "symbolfz"
           type: "serial"
           path: "/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A9UXOL6H-if00-port0"
-          baudrate: 9600
           publisher:
             type: 'stdout'

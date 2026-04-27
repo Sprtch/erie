@@ -69,7 +69,13 @@ class Device:
                             content=content,
                         )
                         processed = self.processor.read(pre_msg)
-                        self.publisher.send(processed)
+                        if self.publisher.available():
+                            self.publisher.send(processed)
+                        else:
+                            self.logger.warning(
+                                f"Publisher '{self.publisher}' not available. Dropping {processed}'."
+                            )
+
                 self.logger.info(f"Reader '{self.reader.type}' Disconnected.")
         self.publisher.send(
             IpcDisconnectMessage(
