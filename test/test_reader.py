@@ -193,7 +193,7 @@ class TestSerialReader(unittest.TestCase):
                 mock_serial.is_open = True
                 mock_serial_class.return_value = mock_serial
 
-                reader = SerialReader(deviceid="test-device")
+                reader = SerialReader(device_id="test-device")
                 with reader:
                     self.assertIsNotNone(reader.io)
                     self.assertFalse(reader.io.closed)

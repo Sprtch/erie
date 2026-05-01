@@ -6,7 +6,7 @@ from erie.reader.evdev import EvdevReader
 from erie.publisher.redis import Redis
 from erie.publisher.stdout import Stdout
 
-from erie.device import Device
+from erie.device import ErieDevice
 
 
 def generate_devices_from_config(config: Config):
@@ -36,15 +36,13 @@ def generate_devices_from_config(config: Config):
         if out.type == "redis":
             if not out.channel:
                 raise ValueError(f"{dev.name}: redis publisher requires 'channel'")
-            print("HHHHHHHHHHHHHHHH")
-            print(out)
             publisher = Redis(host=out.host, port=out.port, channel=out.channel)
         elif out.type == "stdout":
             publisher = Stdout()
         else:
             raise ValueError(f"{dev.name}: unknown publisher type '{out.type}'")
 
-        device = Device(
+        device = ErieDevice(
             name=dev.name,
             reader=reader,
             publisher=publisher,

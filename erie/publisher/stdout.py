@@ -7,5 +7,5 @@ class Stdout(Publisher):
         return True
 
     def send(self, msg):
-        self.logger.debug("Received the following message")
+        self.logger.debug("Sending the following message")
         print(json.dumps(msg.asdict(), indent=2))

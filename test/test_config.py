@@ -10,7 +10,6 @@ class TestConfig(unittest.TestCase):
         conf = Config.from_dict(config_dict)
 
         self.assertEqual(conf.name, "erie")
-        self.assertEqual(conf.redis, "victoria")
         self.assertFalse(conf.debug)
         self.assertEqual(conf.devices, [])
 
@@ -18,7 +17,6 @@ class TestConfig(unittest.TestCase):
         config_dict = {
             "erie": {
                 "name": "testapp",
-                "redis": "redis-host",
                 "debug": True,
                 "nodaemon": True,
                 "logfile": "/var/log/erie.log",
@@ -48,7 +46,6 @@ class TestConfig(unittest.TestCase):
         conf = Config.from_dict(config_dict)
 
         self.assertEqual(conf.name, "testapp")
-        self.assertEqual(conf.redis, "redis-host")
         self.assertTrue(conf.debug)
         self.assertTrue(conf.nodaemon)
         self.assertEqual(conf.logfile, "/var/log/erie.log")
@@ -78,15 +75,14 @@ class TestConfig(unittest.TestCase):
         conf = Config.from_dict(config_dict)
         publisher = conf.devices[0].publisher
 
-        self.assertEqual(publisher.type, "stdout")
-        self.assertIsNone(publisher.host)
-        self.assertIsNone(publisher.channel)
+        self.assertEqual(publisher.type, "redis")
+        self.assertEqual(publisher.host, "localhost")
+        self.assertEqual(publisher.channel, "erie")
 
     def test_config_from_yaml(self):
         yaml_content = """
 erie:
   name: yaml-test
-  redis: yaml-redis
   devices:
     - name: dev1
       type: serial
@@ -103,7 +99,6 @@ erie:
         try:
             conf = Config.from_yaml(tmp_path)
             self.assertEqual(conf.name, "yaml-test")
-            self.assertEqual(conf.redis, "yaml-redis")
             self.assertEqual(len(conf.devices), 1)
             self.assertEqual(conf.devices[0].name, "dev1")
             self.assertEqual(conf.devices[0].type, "serial")
@@ -112,7 +107,7 @@ erie:
             os.unlink(tmp_path)
 
     def test_config_from_json(self):
-        json_content = '{"erie": {"name": "json-test", "redis": "json-redis"}}'
+        json_content = '{"erie": {"name": "json-test"}}'
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             f.write(json_content)
@@ -121,7 +116,6 @@ erie:
         try:
             conf = Config.from_json(tmp_path)
             self.assertEqual(conf.name, "json-test")
-            self.assertEqual(conf.redis, "json-redis")
         finally:
             os.unlink(tmp_path)
 

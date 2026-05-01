@@ -1,4 +1,4 @@
-from typing import TypeVar, Callable, Iterable
+from typing import Type, TypeVar, Callable, Iterable
 import logging
 import dataclasses
 

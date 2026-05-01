@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
-from typing import Optional, Iterator, Any
+from typing import Iterator
 import dataclasses
 import logging
 import threading
+import time
 
 
 @dataclasses.dataclass
@@ -60,6 +61,7 @@ class Reader(ABC):
 
             content = self.read()
             if content is None:
+                time.sleep(0.1)
                 continue
 
             yield content.rstrip("\n")

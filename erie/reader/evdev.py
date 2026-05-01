@@ -35,7 +35,7 @@ class EvdevWrapper:
 class EvdevReader(FileStreamReader):
     """Reader device reading from 'evdev' linux device."""
 
-    deviceid: Optional[str] = None
+    device_id: Optional[str] = None
 
     KEYBOARD_TRANSLATE = {
         "LEFTSHIFT": "",
@@ -47,11 +47,12 @@ class EvdevReader(FileStreamReader):
     }
 
     def __post_init__(self):
-        if not (self.path or self.deviceid):
+        super().__post_init__()
+        if not (self.path or self.device_id):
             self.logger.error("Must specify a path or device id")
 
-        if self.deviceid:
-            self.path = f"/dev/input/by-id/{self.deviceid}"
+        if self.device_id:
+            self.path = f"/dev/input/by-id/{self.device_id}"
 
         self._barcode = ""
         self._pending_barcode = None

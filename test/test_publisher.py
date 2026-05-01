@@ -17,6 +17,9 @@ class TestPublisherBase(unittest.TestCase):
 
     def test_publisher_subclass_must_implement_send(self):
         class MinimalPublisher(Publisher):
+            def available(self):
+                return True
+
             def send(self, msg):
                 return msg
 

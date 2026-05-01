@@ -3,7 +3,7 @@ import unittest.mock
 import threading
 import io
 import sys
-from erie.device import Device
+from erie.device import ErieDevice
 from erie.reader.base import Reader
 from erie.reader.stdin import Stdin
 from erie.reader.file import FileStreamReader
@@ -15,6 +15,9 @@ from erie.schema.type import ScannerTypeEnum
 class MockPublisher(Publisher):
     def __init__(self):
         self.sent = []
+
+    def available(self):
+        return True
 
     def send(self, msg):
         self.sent.append(msg)
@@ -42,11 +45,11 @@ class MockReader(Reader):
         return None
 
 
-class TestDevice(unittest.TestCase):
+class TestErieDevice(unittest.TestCase):
     def test_device_initialization(self):
         reader = MockReader()
         publisher = MockPublisher()
-        device = Device(name="test", reader=reader, publisher=publisher)
+        device = ErieDevice(name="test", reader=reader, publisher=publisher)
 
         self.assertEqual(device.name, "test")
         self.assertIs(device.reader, reader)
@@ -57,14 +60,14 @@ class TestDevice(unittest.TestCase):
         reader = MockReader()
         publisher = MockPublisher()
         processor = Processor()
-        device = Device(name="test", reader=reader, publisher=publisher, processor=processor)
+        device = ErieDevice(name="test", reader=reader, publisher=publisher, processor=processor)
 
         self.assertIs(device.processor, processor)
 
     def test_read_loop_stops_on_event(self):
         reader = MockReader(present_result=True, read_values=["data1", "data2"])
         publisher = MockPublisher()
-        device = Device(name="test", reader=reader, publisher=publisher)
+        device = ErieDevice(name="test", reader=reader, publisher=publisher)
 
         stop_event = threading.Event()
         stop_event.set()
@@ -74,7 +77,7 @@ class TestDevice(unittest.TestCase):
     def test_read_loop_exits_when_not_present(self):
         reader = MockReader(present_result=False)
         publisher = MockPublisher()
-        device = Device(name="test", reader=reader, publisher=publisher)
+        device = ErieDevice(name="test", reader=reader, publisher=publisher)
 
         stop_event = threading.Event()
         stop_event.set()
@@ -84,7 +87,7 @@ class TestDevice(unittest.TestCase):
     def test_read_loop_yields_content(self):
         reader = MockReader(present_result=True, read_values=["test"])
         publisher = MockPublisher()
-        device = Device(name="test", reader=reader, publisher=publisher)
+        device = ErieDevice(name="test", reader=reader, publisher=publisher)
 
         stop_event = threading.Event()
 
@@ -97,7 +100,7 @@ class TestDevice(unittest.TestCase):
     def test_disconnect(self):
         reader = MockReader()
         publisher = MockPublisher()
-        device = Device(name="test", reader=reader, publisher=publisher)
+        device = ErieDevice(name="test", reader=reader, publisher=publisher)
 
         device.disconnect()
 

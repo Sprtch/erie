@@ -36,6 +36,7 @@ class SerialReader(FileStreamReader):
     io: Optional = None
 
     def __post_init__(self):
+        super().__post_init__()
         if not (self.path or self.device_id):
             self.logger.error("Must specify a path or device id")
 

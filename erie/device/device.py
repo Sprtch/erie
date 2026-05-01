@@ -2,13 +2,13 @@ from erie.publisher.base import Publisher
 from erie.reader.base import Reader
 from erie.processor.base import Processor
 from erie.schema.message import IpcDisconnectMessage, IpcIsAliveMessage, IpcIncompleteMessage
+from erie.device import Device
 import dataclasses
-import logging
 import time
 
 
 @dataclasses.dataclass
-class Device:
+class ErieDevice(Device):
     """Device definition built from the configuration.
 
     An input device is defined by multiple components:
@@ -20,9 +20,6 @@ class Device:
     - The 'output' or the medium to push out the message.
     """
 
-    name: str
-    """Familiar name to give to a device."""
-
     reader: Reader
     """The input source."""
 
@@ -31,13 +28,6 @@ class Device:
 
     processor: Processor = dataclasses.field(default_factory=Processor)
     """Processor to transform a raw input into a message"""
-
-    def __post_init__(self):
-        self.logger = logging.getLogger(f"{self.__class__.__name__}.{self.name}")
-
-    def disconnect(self):
-        # TODO send a message that notificate the disconnection.
-        pass
 
     def read_loop(self, stop_event=None):
         self.logger.info("Init `read_loop` function.")
