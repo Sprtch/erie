@@ -6,6 +6,13 @@ with open("README.md", "r") as fh:
 setuptools.setup(
     name="erie-pkg-tperale",
     version="0.0.1",
+    install_requires=[
+        "python-daemon==3.1.2",
+        "evdev==1.9.0",
+        "redis==5.2.1",
+        "pyserial==3.5",
+        "PyYAML==6.0.2",
+    ],
     author="tperale",
     author_email="perale.thomas@gmail.com",
     description="A barcode scanner daemon",
