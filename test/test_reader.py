@@ -11,6 +11,7 @@ from erie.reader.stdin import Stdin
 from erie.reader.file import FileStreamReader
 from erie.reader.serial import SerialReader, SerialWrapper
 from erie.reader.evdev import EvdevReader, EvdevWrapper
+from erie.reader.redis import RedisReader
 from erie.schema.type import ScannerTypeEnum
 
 logging.basicConfig(level=logging.DEBUG)
@@ -211,6 +212,184 @@ class TestSerialReader(unittest.TestCase):
         mock_dev.readline.return_value = b""
         wrapper = SerialWrapper(mock_dev)
         self.assertEqual(wrapper.readline(), "")
+
+
+class TestRedisReader(unittest.TestCase):
+    def _make_reader(self, **kwargs):
+        defaults = {"channel": "test-channel", "host": "localhost", "port": 6379, "db": 0}
+        defaults.update(kwargs)
+        return RedisReader(**defaults)
+
+    def test_present_true_when_ping_succeeds(self):
+        reader = self._make_reader()
+        with unittest.mock.patch("redis.Redis") as mock_redis_cls:
+            mock_client = unittest.mock.MagicMock()
+            mock_client.ping.return_value = True
+            mock_redis_cls.return_value = mock_client
+
+            self.assertTrue(reader.present())
+
+    def test_present_false_when_ping_fails(self):
+        import redis as redis_lib
+
+        reader = self._make_reader()
+        with unittest.mock.patch("redis.Redis") as mock_redis_cls:
+            mock_client = unittest.mock.MagicMock()
+            mock_client.ping.side_effect = redis_lib.RedisError("connection refused")
+            mock_redis_cls.return_value = mock_client
+
+            self.assertFalse(reader.present())
+
+    def test_present_resets_client_on_failure(self):
+        import redis as redis_lib
+
+        reader = self._make_reader()
+        with unittest.mock.patch("redis.Redis") as mock_redis_cls:
+            mock_client = unittest.mock.MagicMock()
+            mock_client.ping.side_effect = redis_lib.RedisError("down")
+            mock_redis_cls.return_value = mock_client
+
+            reader.present()
+            self.assertIsNone(reader._client)
+            self.assertIsNone(reader._pubsub)
+
+    def test_client_lazy_initialization(self):
+        reader = self._make_reader()
+        self.assertIsNone(reader._client)
+        self.assertIsNone(reader._pubsub)
+
+        with unittest.mock.patch("redis.Redis") as mock_redis_cls:
+            mock_client = unittest.mock.MagicMock()
+            mock_redis_cls.return_value = mock_client
+
+            _ = reader.client
+            mock_redis_cls.assert_called_once_with(
+                host="localhost", port=6379, db=0, decode_responses=True
+            )
+            mock_client.pubsub.assert_called_once()
+            self.assertIs(reader._client, mock_client)
+
+    def test_client_reuses_existing_instance(self):
+        reader = self._make_reader()
+        with unittest.mock.patch("redis.Redis") as mock_redis_cls:
+            mock_client = unittest.mock.MagicMock()
+            mock_redis_cls.return_value = mock_client
+
+            first = reader.client
+            second = reader.client
+            self.assertIs(first, second)
+            mock_redis_cls.assert_called_once()
+
+    def test_connect_subscribes_to_channel(self):
+        reader = self._make_reader(channel="my-channel")
+        with unittest.mock.patch("redis.Redis") as mock_redis_cls:
+            mock_client = unittest.mock.MagicMock()
+            mock_pubsub = unittest.mock.MagicMock()
+            mock_client.pubsub.return_value = mock_pubsub
+            mock_redis_cls.return_value = mock_client
+
+            _ = reader.client
+            reader.connect()
+            mock_pubsub.subscribe.assert_called_once_with("my-channel")
+
+    def test_disconnect_unsubscribes_from_channel(self):
+        reader = self._make_reader(channel="my-channel")
+        with unittest.mock.patch("redis.Redis") as mock_redis_cls:
+            mock_client = unittest.mock.MagicMock()
+            mock_pubsub = unittest.mock.MagicMock()
+            mock_client.pubsub.return_value = mock_pubsub
+            mock_redis_cls.return_value = mock_client
+
+            _ = reader.client
+            reader.connect()
+            reader.disconnect()
+            mock_pubsub.unsubscribe.assert_called_once_with("my-channel")
+
+    def test_read_returns_data_on_message(self):
+        reader = self._make_reader()
+        with unittest.mock.patch("redis.Redis") as mock_redis_cls:
+            mock_client = unittest.mock.MagicMock()
+            mock_pubsub = unittest.mock.MagicMock()
+            mock_pubsub.get_message.return_value = {
+                "type": "message",
+                "data": "barcode-123",
+            }
+            mock_client.pubsub.return_value = mock_pubsub
+            mock_redis_cls.return_value = mock_client
+
+            _ = reader.client
+            reader.connect()
+            self.assertEqual(reader.read(), "barcode-123")
+
+    def test_read_returns_data_on_pmessage(self):
+        reader = self._make_reader()
+        with unittest.mock.patch("redis.Redis") as mock_redis_cls:
+            mock_client = unittest.mock.MagicMock()
+            mock_pubsub = unittest.mock.MagicMock()
+            mock_pubsub.get_message.return_value = {
+                "type": "pmessage",
+                "data": "barcode-456",
+            }
+            mock_client.pubsub.return_value = mock_pubsub
+            mock_redis_cls.return_value = mock_client
+
+            _ = reader.client
+            reader.connect()
+            self.assertEqual(reader.read(), "barcode-456")
+
+    def test_read_returns_none_when_no_message(self):
+        reader = self._make_reader()
+        with unittest.mock.patch("redis.Redis") as mock_redis_cls:
+            mock_client = unittest.mock.MagicMock()
+            mock_pubsub = unittest.mock.MagicMock()
+            mock_pubsub.get_message.return_value = None
+            mock_client.pubsub.return_value = mock_pubsub
+            mock_redis_cls.return_value = mock_client
+
+            _ = reader.client
+            reader.connect()
+            self.assertIsNone(reader.read())
+
+    def test_read_returns_none_on_subscribe_confirmation(self):
+        reader = self._make_reader()
+        with unittest.mock.patch("redis.Redis") as mock_redis_cls:
+            mock_client = unittest.mock.MagicMock()
+            mock_pubsub = unittest.mock.MagicMock()
+            mock_pubsub.get_message.return_value = {
+                "type": "subscribe",
+                "channel": "test-channel",
+            }
+            mock_client.pubsub.return_value = mock_pubsub
+            mock_redis_cls.return_value = mock_client
+
+            _ = reader.client
+            reader.connect()
+            self.assertIsNone(reader.read())
+
+    def test_context_manager_connects_and_disconnects(self):
+        reader = self._make_reader(channel="ctx-channel")
+        with unittest.mock.patch("redis.Redis") as mock_redis_cls:
+            mock_client = unittest.mock.MagicMock()
+            mock_pubsub = unittest.mock.MagicMock()
+            mock_client.pubsub.return_value = mock_pubsub
+            mock_redis_cls.return_value = mock_client
+
+            _ = reader.client
+            with reader:
+                mock_pubsub.subscribe.assert_called_once_with("ctx-channel")
+
+            mock_pubsub.unsubscribe.assert_called_once_with("ctx-channel")
+
+    def test_custom_connection_params(self):
+        reader = self._make_reader(host="10.0.0.1", port=6380, db=3)
+        with unittest.mock.patch("redis.Redis") as mock_redis_cls:
+            mock_client = unittest.mock.MagicMock()
+            mock_redis_cls.return_value = mock_client
+
+            _ = reader.client
+            mock_redis_cls.assert_called_once_with(
+                host="10.0.0.1", port=6380, db=3, decode_responses=True
+            )
 
 
 class TestMockReader(unittest.TestCase):

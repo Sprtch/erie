@@ -8,10 +8,25 @@ import time
 
 @dataclasses.dataclass
 class Reader(ABC):
-    """A `Reader` is a device that forware message events.
+    """Abstract base class for input sources that read barcode scanner data.
 
-    Typically this will be assigned to a 'barcode scanning' device but can
-    be generalized to any type of device tthat can read inputs.
+    A Reader wraps a physical or virtual input device (serial port, evdev,
+    stdin, Redis channel) and exposes a uniform iterator interface.  The
+    main entry point is :meth:`retrieve`, which yields complete barcode
+    strings as they arrive.
+
+    Subclass contract:
+      - Implement :meth:`type` (property): return the device type enum.
+      - Implement :meth:`present`: return whether the device node exists.
+      - Implement :meth:`read`: non-blocking read of one line/barcode.
+      - Override :meth:`connect` / :meth:`disconnect` to open/close the
+          underlying resource.
+
+    Lifecycle::
+        with reader:          # calls connect()
+            for line in reader.retrieve(stop_event):
+                process(line)
+        # calls disconnect() on exit
     """
 
     def __post_init__(self):
@@ -19,7 +34,12 @@ class Reader(ABC):
 
     @property
     @abstractmethod
-    def type(self): ...
+    def type(self):
+        """Return the :class:`~erie.schema.type.ScannerTypeEnum` for this reader.
+
+        Used for logging and identifying the reader implementation.
+        """
+        ...
 
     # def export_config(self) -> str:
     #     """Return a string in JSON format of the configuration specificity of the current reading device.
@@ -52,6 +72,18 @@ class Reader(ABC):
         ...
 
     def retrieve(self, stop_event: threading.Event, poll_timeout: float = 1.0) -> Iterator[str]:
+        """Yield barcodes from this reader until disconnected or *stop_event* is set.
+
+        Calls :meth:`read` in a loop.
+        Returns ``None`` means no data yet; the loop sleeps briefly and retries.
+        Returns a non-empty string means a complete barcode was received.
+
+        This is the main public API.
+        It is consumed by :meth:`erie.device.device.ErieDevice.read_loop`.
+
+        :param stop_event: Threading event to signal a graceful shutdown.
+        :param poll_timeout: Unused in base class; available for subclasses.
+        """
         while self.connected():
             # Check stop_event between polls so we exit cleanly even when
             # the device is stopped but no new data has arrived yet.
@@ -67,9 +99,19 @@ class Reader(ABC):
             yield content.rstrip("\n")
 
     def connect(self):
+        """Open the underlying device resource.
+
+        Subclasses should override to acquire handles (open files, subscribe
+        to channels, etc.).  The base class is a no-op.
+        """
         self.logger.debug("Connecting")
 
     def disconnect(self):
+        """Close the underlying device resource.
+
+        Subclasses should override to release handles.  The base class is a
+        no-op.
+        """
         self.logger.debug("Disconnecting")
 
     def __enter__(self):

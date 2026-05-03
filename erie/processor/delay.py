@@ -1,56 +1,44 @@
-from erie.schema.message import IpcIncompleteMessage
-from typing import Optional
-from abc import ABC, abstractmethod
+"""Delay processors that build a quantity before the next real barcode is processed.
+
+Each processor mutates an :class:`~erie.processor.common.InternalRepresentation`
+and is chained into :attr:`~erie.processor.base.Processor._process_pipe` via
+barcode commands such as ``SPRTCHCMD:DIGIT``, ``SPRTCHCMD:MULTIPLIER``, etc.
+"""
+
 import dataclasses
+from abc import ABC, abstractmethod
 
-
-@dataclasses.dataclass
-class Quantity:
-    """
-    Class to represent a quantity in a message and help with the construction
-    of 'delayed' quantity or creating number with the help of a barcode
-    scanner.
-    """
-
-    negative: bool = False
-    value: Optional[int] = None
-    dotted: bool = False
-    floating: Optional[int] = None
-
-    def __str__(self):
-        value = 1 if self.value is None else self.value
-        if self.dotted:
-            return f"{'-' if self.negative else ''}{value}.{self.floating}"
-        else:
-            return f"{'-' if self.negative else ''}{value}"
-
-
-@dataclasses.dataclass
-class InternalRepresentation(IpcIncompleteMessage):
-    quantity: Quantity = dataclasses.field(default_factory=Quantity)
-    action: Optional[int] = None
-
-    def asdict(self) -> dict:
-        return {
-            **dataclasses.asdict(self),
-            "quantity": str(self.quantity),
-            "action": self.action,
-        }
+from erie.processor.common import InternalRepresentation
 
 
 @dataclasses.dataclass
 class ProcessorDelay(ABC):
+    """Abstract base for delay processors that mutate a quantity on the next message.
+
+    Concrete subclasses must implement :meth:`delay`, which receives an
+    :class:`~erie.processor.common.InternalRepresentation`, mutates it, and
+    returns the same object.
+    """
+
     @abstractmethod
-    def delay(self, msg: InternalRepresentation) -> InternalRepresentation: ...
+    def delay(self, msg: InternalRepresentation) -> InternalRepresentation:
+        """Apply this processor's effect to *msg* and return it."""
+        ...
 
 
 class MultiplierProcessor(ProcessorDelay):
+    """Multiply the accumulated quantity by the given factor.
+
+    Triggered by ``SPRTCHCMD:MULTIPLIER:<N>``.
+    """
+
     multiplier: int = 1
 
     def __init__(self, multiplier: int):
         self.multiplier = multiplier
 
     def delay(self, msg):
+        """Multiply the current quantity part by :attr:`multiplier`."""
         if msg.quantity.dotted:
             if msg.quantity.floating is None:
                 msg.quantity.floating = 1
@@ -64,12 +52,18 @@ class MultiplierProcessor(ProcessorDelay):
 
 
 class DigitProcessor(ProcessorDelay):
+    """Append a digit to the integer or decimal part of the quantity.
+
+    Triggered by ``SPRTCHCMD:DIGIT:<N>``.
+    """
+
     digit: int = 0
 
     def __init__(self, digit: int):
         self.digit = digit
 
     def delay(self, msg):
+        """Append :attr:`digit` to the current quantity part."""
         if msg.quantity.dotted:
             if msg.quantity.floating is None:
                 msg.quantity.floating = self.digit
@@ -85,7 +79,13 @@ class DigitProcessor(ProcessorDelay):
 
 
 class DotProcessor(ProcessorDelay):
+    """Switch quantity building to decimal mode.
+
+    Triggered by ``SPRTCHCMD:DOT``.
+    """
+
     def delay(self, msg):
+        """Enable decimal mode and default the integer part to 0 if unset."""
         if msg.quantity.value is None:
             msg.quantity.value = 0
         msg.quantity.dotted = True
@@ -93,14 +93,14 @@ class DotProcessor(ProcessorDelay):
 
 
 class NegativeProcessor(ProcessorDelay):
-    """
-    The `NegativeProcessor` turns the quantity of the current message into a
-    negative number.
+    """Mark the quantity as negative.
 
-    :note: Negative numbers are useful in inventory mode as it will remove
-        something from the inventory instead of adding it.
+    Triggered by ``SPRTCHCMD:NEGATIVE``.
+
+    :note: In inventory mode, negative quantities remove items from inventory.
     """
 
     def delay(self, msg):
+        """Set the quantity's negative flag."""
         msg.quantity.negative = True
         return msg

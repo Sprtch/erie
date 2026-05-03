@@ -43,8 +43,8 @@ class Redis(Publisher):
                 - Any object: Will be converted to string
         """
         try:
-            if hasattr(msg, "_asdict"):
-                payload = json.dumps(msg._asdict())
+            if hasattr(msg, "asdict"):
+                payload = json.dumps(msg.asdict())
             elif hasattr(msg, "__dict__"):
                 payload = json.dumps(msg.__dict__)
             else:

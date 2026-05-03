@@ -84,9 +84,6 @@ class Processor:
         self._mode = proc
         self._reset_process_pipe()
 
-    def _process_dispatch(self, msg):
-        return self._mode.process(msg)
-
     def process(self, msg: IpcIncompleteMessage):
         """
         Process a message (not a function message) and apply the process pipe to it.
@@ -98,7 +95,7 @@ class Processor:
         """
         internal_msg = InternalRepresentation(**msg.asdict())
         final_msg = self._process_pipe(internal_msg)
-        result = self._process_dispatch(final_msg)
+        result = self._mode.process(final_msg)
         self._reset_process_pipe()
         return result
 

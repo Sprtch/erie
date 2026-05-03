@@ -16,6 +16,8 @@ class ScannerTypeEnum(IntEnum):
     """Usb device scanner"""
     HURON = 5
     """Input from the huron webapp"""
+    REDIS = 6
+    """Input from redis listener"""
 
 
 class ScannerModeEnum(IntEnum):

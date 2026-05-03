@@ -1,13 +1,12 @@
 # Erie
 
-Erie is python daemon handling the incoming messages from multiple barcode
-scanners and send them to the [printer](https://github.com/Sprtch/victoria).
+Erie is python daemon handling the incoming messages from multiple reading
+sources (barcode scanners, etc ...)
+
+It abstracts the reading from multiple source, processing the messages with in
+house commands, sending the message to different recipients.
 
 ## Usage
-
-This package is made to be ran as a daemon on the raspberry pi.
-The [firmware](https://github.com/Sprtch/buildroot) with buildroot handle the
-build process and the configuration.
 
 During development process launch the script can with the following
 command to log in the console.
@@ -37,25 +36,28 @@ to avoid to have to use a barcode scanner to input data.
 
 ## Config
 
-The program is configurable by passing a `.yaml` file as argument (with `.c`
+The daemon is configurable by passing a `.yaml` file as argument (with `.c`
 argument) formatted in the following way:
 
 ```yaml
-despinassy:
-    uri: <database uri>
-
 erie:
-    redis: <redis default channel>
+    name: "erie"
+    debug: true
+    nodaemon: true
+    publisher:
+      type: "redis"
+      channel: "erie"
     devices:
-        - <device_name>:
-            type: "serial"
-            id:  <device_id in /dev/serial/by-id/>
-            baudrate: <device baudrate>
-            redis:  <device redis channel>
-        - <device_name>:
-            type: "evdev"
-            id: <device_id in /dev/input/by-id/>
+        - name: "stdin-input"
+          type: "stdin"
+        - name: "symbolfz"
+          type: "serial"
+          path: "/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A9UXOL6H-if00-port0"
+          publisher:
+            type: 'stdout'
 ```
+
+Example configuration are available in the `configs/` directory.
 
 ## Commands
 
