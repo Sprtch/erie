@@ -2,6 +2,7 @@ import dataclasses
 from erie.schema.message import IpcIncompleteMessage
 from typing import Optional
 
+
 @dataclasses.dataclass
 class Quantity:
     """Numeric quantity built incrementally from chained device commands.

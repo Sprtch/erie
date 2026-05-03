@@ -45,6 +45,7 @@ class IpcPrintMessage(IpcCompleteMessage):
         not represent the actual form of what is sent through the other program
         through redis.
     """
+
     type: IpcMessageType = IpcMessageType.PRINT
     """Print message type"""
 
@@ -57,6 +58,7 @@ class IpcInventoryMessage(IpcCompleteMessage):
     """
     Message used for inventory mode.
     """
+
     type: IpcMessageType = IpcMessageType.INVENTORY
     """Inventory message type"""
 

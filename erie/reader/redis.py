@@ -4,6 +4,7 @@ from typing import Optional
 import redis
 import dataclasses
 
+
 @dataclasses.dataclass
 class RedisReader(Reader):
     """The `RedisReader` class intercept incoming messages from 'redis'.

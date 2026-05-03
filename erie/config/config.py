@@ -148,17 +148,21 @@ class Config:
             )
 
             devices.append(
-                ConfigDevice(**{
-                    **d,
-                    "publisher": publisher,
-                })
+                ConfigDevice(
+                    **{
+                        **d,
+                        "publisher": publisher,
+                    }
+                )
             )
 
-        return Config(**{
-            **data,
-            "publisher": default_publisher,
-            "devices": devices,
-        })
+        return Config(
+            **{
+                **data,
+                "publisher": default_publisher,
+                "devices": devices,
+            }
+        )
 
     @staticmethod
     def from_yaml(path: str, **kwargs) -> "Config":
