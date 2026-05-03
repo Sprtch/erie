@@ -1,3 +1,9 @@
+"""Entry point for the Erie barcode scanner daemon.
+
+Handles argument parsing, logging setup, config loading, and launches
+the device workers via the daemon runner.
+"""
+
 from erie.config.config import Config
 from erie.config.util import generate_devices_from_config
 from erie.daemon.runner import run

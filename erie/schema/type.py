@@ -1,3 +1,9 @@
+"""Scanner type and mode enumerations.
+
+Defines the supported input device types and operational modes for
+the Erie barcode scanner.
+"""
+
 from enum import IntEnum
 
 

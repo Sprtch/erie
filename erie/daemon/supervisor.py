@@ -1,3 +1,9 @@
+"""Thread supervisor for Erie device workers.
+
+Spawns one thread per device and manages their lifecycle, ensuring
+graceful shutdown and final disconnect passes.
+"""
+
 import threading
 import logging
 from typing import Callable, Iterable

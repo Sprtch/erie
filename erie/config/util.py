@@ -1,3 +1,9 @@
+"""Device factory: builds reader/publisher/device objects from Config.
+
+Maps config device entries to their corresponding reader and publisher
+implementations, validating required fields along the way.
+"""
+
 from erie.config.config import Config
 from erie.reader.serial import SerialReader
 from erie.reader.stdin import Stdin
@@ -10,10 +16,14 @@ from erie.device import ErieDevice
 
 
 def generate_devices_from_config(config: Config):
-    """Return devices list from config object.
+    """Return a list of ErieDevice instances built from the given config.
 
-    >>> config = Config.from_json("/to/json/file.json")
-    >>> generate_devices_from_config(config)
+    Each device entry in config.devices is mapped to a reader (by type)
+    and a publisher (by type). Raises ValueError on unknown types or
+    missing required fields.
+
+    :param config: Parsed application configuration.
+    :returns: List of ready-to-run ErieDevice objects.
     """
     devices = []
 

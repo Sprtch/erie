@@ -1,23 +1,44 @@
 # Erie
 
-Erie is python daemon handling the incoming messages from multiple reading
-sources (barcode scanners, etc ...)
+Barcode scanner daemon that reads from multiple input sources, processes
+barcodes with in-house commands, and publishes results via Redis or stdout.
 
-It abstracts the reading from multiple source, processing the messages with in
-house commands, sending the message to different recipients.
+```mermaid
+flowchart LR
+    %% Components
+    ERIE["ERIE\n(Input Daemon / Barcode Scanner)"]
+    HURON["HURON\nFlask Web API + Redis Worker\n(DB Access)"]
+    VICTORIA["VICTORIA\nPrinting Daemon\n(Templates + Printers)"]
+    REDIS[(Redis Message Bus)]
+    DB[(Database)]
+    PRINTERS[(Printers)]
 
-## Usage
+    %% Highlight ERIE
+    style ERIE fill:#1e90ff,color:#ffffff,stroke:#0b3d91,stroke-width:3px
 
-During development process launch the script can with the following
-command to log in the console.
+    %% Flows
+    ERIE -->|Publish scan events| REDIS
+    REDIS -->|Consume messages| HURON
 
-```txt
-> virtualenv venv
-> source venv/bin/activate
-> pip install -r requirements.txt
-> pip install -e .
-> venv/bin/python erie -h
-usage: [-h] [--no-daemon] [--logfile LOGFILE] [--debug] [--pid PID] [-c CONFIG]
+    HURON -->|DB read/write| DB
+    HURON -->|Send print jobs| REDIS
+
+    REDIS -->|Consume print jobs| VICTORIA
+    VICTORIA -->|Print output| PRINTERS
+```
+
+## Quick Start
+
+```bash
+virtualenv venv && source venv/bin/activate
+pip install -r requirements.txt && pip install -e .
+python -m erie --no-daemon --debug
+```
+
+In debug mode, barcodes are read from stdin so you can test without a physical scanner.
+
+```text
+usage: erie [-h] [--no-daemon] [--logfile LOGFILE] [--debug] [--pid PID] [-c CONFIG]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -27,17 +48,11 @@ optional arguments:
   --pid PID             Pid destination
   -c CONFIG, --config CONFIG
                         Config file location
-> venv/bin/python erie --no-daemon
 ```
 
-In development mode its recommended to launch _erie_ with the `--debug` option.
-The _debug_ mode automatically handle the incoming data from the command line
-to avoid to have to use a barcode scanner to input data.
+## Configuration
 
-## Config
-
-The daemon is configurable by passing a `.yaml` file as argument (with `.c`
-argument) formatted in the following way:
+Erie is configured via a YAML (or JSON) file passed with the `-c` flag. Example:
 
 ```yaml
 erie:
@@ -45,80 +60,133 @@ erie:
     debug: true
     nodaemon: true
     publisher:
-      type: "redis"
-      channel: "erie"
+        type: "redis"
+        host: "localhost"
+        port: 6379
+        channel: "erie"
     devices:
-        - name: "stdin-input"
-          type: "stdin"
-        - name: "symbolfz"
+        - name: "scanner-1"
           type: "serial"
-          path: "/dev/serial/by-id/usb-FTDI_FT232R_USB_UART_A9UXOL6H-if00-port0"
-          publisher:
-            type: 'stdout'
+          device_id: "usb-FTDI_FT232R_USB_UART_A9UXOL6H-if00-port0"
+        - name: "scanner-2"
+          type: "evdev"
+          device_id: "usb-USB_Keyboard-event-kbd"
+        - name: "dev-input"
+          type: "stdin"
 ```
 
-Example configuration are available in the `configs/` directory.
+Example configurations are available in the `configs/` directory.
+
+### Config Fields
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `name` | string | `"erie"` | Application name |
+| `debug` | bool | `false` | Enable debug logging |
+| `nodaemon` | bool | `false` | Run in foreground instead of as a daemon |
+| `logfile` | string | `None` | Log file path (stdout if unset) |
+| `pidfile` | string | `None` | PID file path for daemon mode |
+
+### Publisher Config
+
+The default publisher is applied to all devices. Each device can override it with its own `publisher` block.
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `type` | string | `"redis"` | `"redis"` or `"stdout"` |
+| `host` | string | `"localhost"` | Redis host |
+| `port` | int | `6379` | Redis port |
+| `channel` | string | `"erie"` | Redis pub/sub channel |
+
+### Device Config
+
+| Field | Type | Description |
+|---|---|---|
+| `name` | string | Device name (used in IPC messages) |
+| `type` | string | `"serial"`, `"evdev"`, or `"stdin"` |
+| `device_id` | string | Device ID resolved under `/dev/serial/by-id/` or `/dev/input/by-id/` |
+| `path` | string | Direct device path (alternative to `device_id`) |
+
+## Device Types
+
+| Type | Description |
+|---|---|
+| `stdin` | Reads from terminal input. Used for development and debugging. |
+| `serial` | USB serial barcode scanner via pyserial. Resolves `device_id` to `/dev/serial/by-id/<device_id>`. Baudrate: 9600. |
+| `evdev` | Linux input event device (e.g., USB keyboard-mode scanners). Resolves `device_id` to `/dev/input/by-id/<device_id>`. Grabs exclusive access to the device. Translates keyboard keycodes to characters. |
 
 ## Commands
 
-The program can detect formatted input commands scanned from a barcode scanner.
-The commands are prefixed with `SPRTCHCMD:` and have the following
-structure
+Barcodes prefixed with `SPRTCHCMD:` are treated as commands rather than data. The format is:
 
 ```txt
-SPRTCHCMD:<cmd_name>:<arguments>
+SPRTCHCMD:<cmd>:<arg>
 ```
 
-There are two types of commands scannable.
+Commands fall into two categories: **mode** commands that change scanner behavior, and **delay** commands that modify the next scanned barcode.
 
-* The one that change the mode the barcode scanner the command is scanned from,
-  is operating in.
-* The one that modify the result of the next scanned barcode.
+### Mode Commands
 
-### Mode
+Mode commands switch how subsequent barcodes are handled. Each scanner's mode is independent.
 
-The mode a barcode scanner is operating in define how the scanned barcode will be
-handled by the program.
-The mode of a scanner is changeable by scanning the following command with the
-scanner and is unique to each scanner device.
+| Command | Description |
+|---|---|
+| `SPRTCHCMD:MODE:PRINT` | **Print mode** (default). Scanned barcodes are sent to the printer via Redis. |
+| `SPRTCHCMD:MODE:INVENTORY` | **Inventory mode**. Scanned barcodes are logged to the database. If the entry exists, the count is incremented. |
 
-#### Print Mode: `SPRTCHCMD:MODE:PRINT`
+### Delay Commands
 
-In this mode the scanned barcodes will be directly sent
-to the printer through redis.
+Delay commands are queued and applied to the next real barcode. They can be stacked.
 
-The print mode is the default mode.
+| Command | Description |
+|---|---|
+| `SPRTCHCMD:MULTIPLIER:<N>` | Multiply the next action by N. Stackable: `MULTIPLIER:2` then `MULTIPLIER:3` yields factor 6. |
+| `SPRTCHCMD:DIGIT:<N>` | Append digit N to the quantity. Chainable to build multi-digit numbers (e.g., `DIGIT:4` then `DIGIT:2` = 42). |
+| `SPRTCHCMD:DOT` | Switch to decimal mode. Subsequent `DIGIT` commands append to the decimal part. |
+| `SPRTCHCMD:NEGATIVE` | Mark the quantity as negative. In inventory mode, negative quantities remove items. |
+| `SPRTCHCMD:CLEAR:0` | Clear all queued delay commands. |
 
-#### Inventory Mode: `SPRTCHCMD:MODE:INVENTORY`
+### Quantity Building
 
-In this mode the scanned barcodes will get logged to the `inventory` table in
-the database.
-If the entry already exists in the database it will update the entry to
-increment the count.
+The quantity system builds a number from delay commands before applying it to the next barcode:
 
-### Function
+- `DIGIT:1`, `DIGIT:2` produces `12`
+- `DIGIT:4`, `DIGIT:2`, `MULTIPLIER:2` produces `84` (multiplier applies to the integer)
+- `DOT`, `DIGIT:2`, `MULTIPLIER:2` produces `0.4` (multiplier applies to the decimal part)
+- `NEGATIVE`, `DIGIT:5` produces `-5`
 
-The 'function' category group all the commands that are gonna get queued and
-executed once the program receive a barcode.
+If no `DIGIT` commands are scanned, the default quantity is `1`.
 
-#### Multiplier: `SPRTCHCMD:MULTIPLIER:<multiplier>`
+## Architecture
 
-Depending on the current mode the program is operating in, it will multiply
-the next action on a barcode (by default an action is applied 1 time) by the
-number passed in the argument of the command.
+Erie runs each device reader in its own thread, supervised by a main process. When a reader connects, it publishes an `IsAlive` message; on disconnect, a `Disconnect` message. These IPC messages share the same channel as barcode data, allowing downstream consumers (e.g., a printer daemon) to track device presence.
 
-* In print mode, it will multiply the number of barcode that get printed.
-* In inventory mode, it will multiply the number time we log the next barcode.
+The daemon handles `SIGTERM` and `SIGINT` for graceful shutdown: it signals all threads to stop and disconnects devices. If a reader or publisher becomes unavailable, Erie retries the connection periodically rather than crashing.
 
-This command can get stacked before being executed once a barcode is received.
-Scanning the command `SPRTCHCMD:MULTIPLIER:2` and then `SPRTCHCMD:MULTIPLIER:3`
-will apply the next action `6` time.
+## Development
 
-#### Clear: `SPRTCHCMD:CLEAR:0`
+### Linting
 
-Clear the queued functions.
+```bash
+ruff check .
+```
 
-## Useful Links
+### Testing
 
-* [LS3578Product Reference Guide](https://topresale.ru/download/Zebra_Motorola_LS3578_%D0%A1%D0%BF%D1%80%D0%B0%D0%B2%D0%BE%D1%87%D0%BD%D0%BE%D0%B5_%D1%80%D1%83%D0%BA%D0%BE%D0%B2%D0%BE%D0%B4%D1%81%D1%82%D0%B2%D0%BE.pdf)
-* [Product reference guide](https://www.zebra.com/content/dam/zebra_new_ia/en-us/manuals/barcode-scanners/ds3578-prg-en.pdf)
+```bash
+pytest test/ -v --timeout=5
+```
+
+CI runs on GitHub Actions with Python 3.12.
+
+### Debugging Redis Output
+
+A standalone Redis subscriber script is available for inspecting published messages:
+
+```bash
+python scripts/redis_subscriber.py --host localhost --port 6379 --channel erie
+```
+
+## License
+
+GPL-3.0, see [LICENSE](LICENSE) for details.

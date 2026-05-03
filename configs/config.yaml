@@ -1,15 +1,16 @@
+# Erie barcode scanner configuration
+# See README.md for full documentation of all options.
 erie:
-    name: "erie"
-    debug: false
-    nodaemon: true
-    publisher:
-      type: "redis"
-      channel: "erie"
-    devices:
-        - name: "symbolfz"
-          type: "serial"
-          id: "usb-FTDI_FT232R_USB_UART_A9UXOL6H-if00-port0"
-          baudrate: 9600
+    name: "erie"            # Application name
+    debug: false            # Enable debug logging
+    nodaemon: true          # Run in foreground (set false for daemon mode)
+    publisher:              # Default publisher for all devices
+      type: "redis"         # Publisher type: "redis" or "stdout"
+      channel: "erie"       # Redis channel name
+    devices:                # List of barcode scanner devices
+        - name: "symbolfz"  # Device identifier
+          type: "serial"    # Reader type: "serial", "evdev", or "stdin"
+          id: "usb-FTDI_FT232R_USB_UART_A9UXOL6H-if00-port0"  # /dev/serial/by-id/ symlink
         - name: "inatek"
           type: "evdev"
-          id: "usb-Belon.cn_2.4G_Wireless_Device_Belon_Smart-event-kbd"
+          id: "usb-Belon.cn_2.4G_Wireless_Device_Belon_Smart-event-kbd"  # /dev/input/by-id/ symlink

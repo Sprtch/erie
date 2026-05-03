@@ -1,3 +1,10 @@
+"""Daemon runner for the Erie barcode scanner.
+
+Handles daemonization, signal registration, and launching the device
+worker threads. Can run in foreground (non-daemon) or background
+(daemon) mode.
+"""
+
 import sys
 import signal
 import logging
@@ -28,6 +35,11 @@ def make_signal_handler(
 
 
 def build_daemon_context(config: Config, log_handlers) -> daemon.DaemonContext:
+    """Build a DaemonContext configured from the application config.
+
+    Preserves log file handles across the daemon fork and optionally
+    attaches a PID file lock.
+    """
     return daemon.DaemonContext(
         pidfile=FileLock(config.pidfile) if config.pidfile else None,
         detach_process=True,
@@ -39,6 +51,12 @@ def build_daemon_context(config: Config, log_handlers) -> daemon.DaemonContext:
 
 
 def run(config: Config, devices: Iterable[Device], log_handlers) -> None:
+    """Start the application, either as a daemon or in the foreground.
+
+    Registers SIGTERM/SIGINT handlers for graceful shutdown, then
+    delegates to run_workers. In daemon mode the process detaches
+    from the terminal first.
+    """
     from erie.daemon.supervisor import run_workers
 
     stop_event = threading.Event()

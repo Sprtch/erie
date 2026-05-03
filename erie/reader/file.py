@@ -1,3 +1,9 @@
+"""File-based reader for barcode scanners.
+
+Provides FileStreamReader for reading from arbitrary file paths and
+IoReader for reading from already-open IO objects like stdin.
+"""
+
 from erie.reader.base import Reader
 from erie.schema.type import ScannerTypeEnum
 from typing import Optional
@@ -10,7 +16,7 @@ import select
 
 @dataclasses.dataclass
 class FileStreamReader(Reader):
-    """Yields lines from stdin as a continuous generator."""
+    """Read lines from a file path using polling and select."""
 
     path: str
     io: Optional[IOBase] = None
@@ -28,7 +34,7 @@ class FileStreamReader(Reader):
         return self.io is not None and not self.io.closed
 
     def read(self) -> str | None:
-        """"""
+        """Return the next line from the file, or None on timeout/EOF."""
         ready, _, _ = select.select([self.io], [], [], self.poll_timeout)
 
         if not ready:
@@ -70,7 +76,7 @@ class FileStreamReader(Reader):
 
 @dataclasses.dataclass
 class IoReader(FileStreamReader):
-    """Yields lines from stdin as a continuous generator."""
+    """Read lines from an already-open IO object (e.g. stdin)."""
 
     io: IOBase
     path: str = ""

@@ -1,3 +1,9 @@
+"""Evdev input device reader for barcode scanners.
+
+Reads keyboard-style input events from Linux evdev devices and translates
+keycodes into barcode strings.
+"""
+
 import dataclasses
 import select
 from typing import Optional
@@ -10,30 +16,42 @@ from erie.schema.type import ScannerTypeEnum
 
 
 class EvdevWrapper:
+    """Thin wrapper around an evdev.InputDevice providing an IOBase-like interface."""
+
     def __init__(self, device):
         self._dev = device
 
     @property
     def closed(self):
+        """Return True if the underlying device file descriptor is closed."""
         return not self._dev.fd >= 0
 
     def fileno(self):
+        """Return the file descriptor of the underlying device."""
         return self._dev.fd
 
     def read_events(self):
+        """Return pending input events from the device."""
         return self._dev.read()
 
     def open(self):
+        """Grab exclusive access to the device so other consumers cannot read it."""
         self._dev.grab()
 
     def close(self):
+        """Release and close the underlying device."""
         self._dev.ungrab()
         self._dev.close()
 
 
 @dataclasses.dataclass
 class EvdevReader(FileStreamReader):
-    """Reader device reading from 'evdev' linux device."""
+    """Reader device reading from 'evdev' linux device.
+
+    Translates keyboard key-up events into barcode characters. Special keys
+    (SHIFT, ENTER, punctuation) are mapped via KEYBOARD_TRANSLATE. A barcode
+    is emitted when ENTER is pressed or an unmapped key is encountered.
+    """
 
     device_id: Optional[str] = None
 
@@ -62,6 +80,7 @@ class EvdevReader(FileStreamReader):
         return ScannerTypeEnum.EVDEV
 
     def connect(self):
+        """Open the evdev device and grab exclusive access."""
         self.logger.debug(f"Opening '{self.path}'")
         if self.present():
             dev = evdev.InputDevice(self.path)
@@ -69,6 +88,12 @@ class EvdevReader(FileStreamReader):
             self.io.open()
 
     def read(self) -> str | None:
+        """Read key events and return a completed barcode string, or None.
+
+        Key-up events are translated to characters and accumulated into a
+        barcode buffer. Returns the buffered barcode when ENTER is pressed
+        or an unmapped key is encountered, then resets the buffer.
+        """
         if self._pending_barcode is not None:
             barcode = self._pending_barcode
             self._pending_barcode = None
@@ -104,25 +129,3 @@ class EvdevReader(FileStreamReader):
                         self._barcode += str(key)
 
         return None
-
-    # def retrieve(self, stop_event: threading.Event = None):
-    #     # TODO Remove this implementation and simplify previous one.
-    #     barcode = ""
-    #     try:
-    #         for ev in self._dev.read_loop():
-    #             if stop_event is not None and stop_event.is_set():
-    #                 self.logger.debug("[%s] stop_event set: exiting", self.type)
-    #                 return
-    #
-    #             if ev.type == EV_KEY:
-    #                 data = evdev.categorize(ev)
-    #                 if data.keystate == 0:
-    #                     key = KEY[data.scancode][4:]
-    #                     key = Evdev.KEYBOARD_TRANSLATE.get(key, key)
-    #                     if (key is None and barcode) or key == "ENTER":
-    #                         yield barcode
-    #                         barcode = ""
-    #                     elif len(key):
-    #                         barcode += str(key)
-    #     except OSError:
-    #         self.logger.warning("Barcode scanner just disconnected")

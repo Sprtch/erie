@@ -1,3 +1,9 @@
+"""IPC message types for communication between Erie and its consumers.
+
+Defines the dataclasses used for print, inventory, alive, and disconnect
+messages sent over Redis pub/sub or other channels.
+"""
+
 import dataclasses
 from enum import IntEnum
 
@@ -36,15 +42,7 @@ class IpcCompleteMessage(IpcIncompleteMessage):
 
 @dataclasses.dataclass
 class IpcPrintMessage(IpcCompleteMessage):
-    """
-    The content of a message read from a device.
-    This class abstract and help to maintain data integrety of the content
-    shared between a device and its processor.
-
-    :note: This message only abstract what it shared inside this program and do
-        not represent the actual form of what is sent through the other program
-        through redis.
-    """
+    """Message used to perform a print."""
 
     type: IpcMessageType = IpcMessageType.PRINT
     """Print message type"""
@@ -55,9 +53,7 @@ class IpcPrintMessage(IpcCompleteMessage):
 
 @dataclasses.dataclass
 class IpcInventoryMessage(IpcCompleteMessage):
-    """
-    Message used for inventory mode.
-    """
+    """Message used for inventory mode."""
 
     type: IpcMessageType = IpcMessageType.INVENTORY
     """Inventory message type"""
